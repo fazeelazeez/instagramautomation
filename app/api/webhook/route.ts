@@ -9,8 +9,11 @@ export async function GET(request: Request) {
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
 
+  const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || 'insta_auto_verify_2026';
+
   if (mode && token) {
-    if (mode === 'subscribe' && token === process.env.WEBHOOK_VERIFY_TOKEN) {
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+      console.log('WEBHOOK_VERIFIED');
       return new Response(challenge, { status: 200 });
     } else {
       return new Response(null, { status: 403 });
