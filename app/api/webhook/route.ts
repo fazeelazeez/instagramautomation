@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
 
-  const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || 'insta_auto_verify_2026';
+  const VERIFY_TOKEN = 'insta_auto_verify_2026';
 
   if (mode && token) {
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
