@@ -26,8 +26,8 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">SilQueen Designs</h1>
+        <div className="mb-8 text-center flex flex-col items-center">
+          <img src="/logo.png" alt="SilQueen Designs Logo" className="w-48 h-auto mb-4" />
           <p className="text-slate-400">Automation Control Center</p>
         </div>
 
