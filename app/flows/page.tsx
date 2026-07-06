@@ -83,7 +83,7 @@ export default function FlowsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-6 md:p-10 max-w-5xl mx-auto">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto w-full">
       <div className="flex justify-between items-center mb-10">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Automation Flows</h1>

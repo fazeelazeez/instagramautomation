@@ -26,5 +26,5 @@ export function middleware(request: NextRequest) {
 
 // Only run middleware on these paths
 export const config = {
-  matcher: ['/', '/flows', '/login'],
+  matcher: ['/', '/flows', '/login', '/analytics', '/settings'],
 };

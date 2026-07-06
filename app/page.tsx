@@ -16,30 +16,7 @@ import {
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-lg border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-insta-gradient rounded-lg flex items-center justify-center">
-                <Instagram className="text-white w-5 h-5" />
-              </div>
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
-                InstaAuto
-              </span>
-            </div>
-            <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-600">
-              <a href="/" className="text-primary hover:text-primary-hover">Dashboard</a>
-              <a href="/flows" className="hover:text-primary transition-colors">Automations</a>
-              <a href="#" className="hover:text-primary transition-colors">Analytics</a>
-              <a href="#" className="hover:text-primary transition-colors">Settings</a>
-            </div>
-            <button className="insta-button text-sm">
-              Connect Account
-            </button>
-          </div>
-        </div>
-      </nav>
+      {/* Main Content */}
 
       <main className="flex-grow p-6 md:p-10 max-w-7xl mx-auto w-full">
         {/* Welcome Header */}
