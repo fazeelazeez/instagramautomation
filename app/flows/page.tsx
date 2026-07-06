@@ -15,10 +15,11 @@ import {
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui/core';
 
-import { createFlow, getFlows, toggleFlowActive, deleteFlow } from '@/app/actions/flows';
+import { createFlow, getFlows, toggleFlowActive, deleteFlow, updateFlow } from '@/app/actions/flows';
 
 export default function FlowsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingFlowId, setEditingFlowId] = useState<string | null>(null);
   const [newFlow, setNewFlow] = useState({ name: '', keyword: '', comment: '', dm: '' });
   const [flows, setFlows] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,17 +34,38 @@ export default function FlowsPage() {
     loadFlows();
   }, []);
 
+  const handleEdit = (flow: any) => {
+    setNewFlow({
+      name: flow.name,
+      keyword: flow.trigger_keyword,
+      comment: flow.response_comment,
+      dm: flow.response_dm
+    });
+    setEditingFlowId(flow.id);
+    setIsModalOpen(true);
+  };
+
   const handleSave = async () => {
     if (!newFlow.name || !newFlow.keyword) return;
     
-    const result = await createFlow(newFlow);
+    let result;
+    if (editingFlowId) {
+      result = await updateFlow(editingFlowId, newFlow);
+    } else {
+      result = await createFlow(newFlow);
+    }
+
     if (result.success) {
-      // Refresh local list
       const updatedFlows = await getFlows();
       setFlows(updatedFlows);
-      setIsModalOpen(false);
-      setNewFlow({ name: '', keyword: '', comment: '', dm: '' });
+      closeModal();
     }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingFlowId(null);
+    setNewFlow({ name: '', keyword: '', comment: '', dm: '' });
   };
 
   const handleToggle = async (id: string, active: boolean) => {
@@ -75,7 +97,7 @@ export default function FlowsPage() {
         </Button>
       </div>
 
-      {/* Create Flow Modal */}
+      {/* Flow Modal (New or Edit) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm">
           <motion.div 
@@ -84,8 +106,10 @@ export default function FlowsPage() {
             className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden"
           >
             <div className="p-6 border-b border-slate-50 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-900">New Automation Flow</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <h2 className="text-xl font-bold text-slate-900">
+                {editingFlowId ? 'Edit Automation Flow' : 'New Automation Flow'}
+              </h2>
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -143,10 +167,10 @@ export default function FlowsPage() {
                 className="flex-grow py-3"
                 onClick={handleSave}
               >
-                Save Automation
+                {editingFlowId ? 'Update Automation' : 'Save Automation'}
               </Button>
               <button 
-                onClick={() => setIsModalOpen(false)}
+                onClick={closeModal}
                 className="px-6 py-3 font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors"
               >
                 Cancel
@@ -204,7 +228,10 @@ export default function FlowsPage() {
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
-                  <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-primary transition-colors">
+                  <button 
+                    onClick={() => handleEdit(flow)}
+                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-primary transition-colors"
+                  >
                     <ChevronRight className="w-5 h-5" />
                   </button>
                 </div>
@@ -222,7 +249,7 @@ export default function FlowsPage() {
           </div>
           <h3 className="text-lg font-semibold text-slate-900">No flows created yet</h3>
           <p className="text-slate-500 mb-6">Create your first automation to start saving time.</p>
-          <Button className="px-8">Get Started</Button>
+          <Button className="px-8" onClick={() => setIsModalOpen(true)}>Get Started</Button>
         </div>
       )}
     </div>

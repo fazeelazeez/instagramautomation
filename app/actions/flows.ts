@@ -76,3 +76,31 @@ export async function deleteFlow(id: string) {
   revalidatePath('/flows');
   return { success: true };
 }
+
+export async function updateFlow(id: string, formData: {
+  name: string;
+  keyword: string;
+  comment: string;
+  dm: string;
+}) {
+  try {
+    const { data, error } = await supabase
+      .from('automation_flows')
+      .update({
+        name: formData.name,
+        trigger_keyword: formData.keyword,
+        response_comment: formData.comment,
+        response_dm: formData.dm,
+      })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+
+    revalidatePath('/flows');
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error updating flow:', error);
+    return { success: false, error };
+  }
+}
