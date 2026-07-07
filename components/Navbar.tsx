@@ -23,6 +23,24 @@ export default function Navbar() {
   // Don't show navbar on login page
   if (pathname === '/login') return null;
 
+  const isLegalPage = ['/privacy', '/terms', '/deletion'].includes(pathname);
+
+  // Simple public header for legal pages
+  if (isLegalPage) {
+    return (
+      <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-lg border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-center h-16 items-center">
+            <Link href="/" className="flex items-center gap-3 group">
+              <img src="/logo.png" alt="SilQueen Designs Logo" className="h-10 w-auto group-hover:scale-105 transition-transform" />
+              <span className="text-xl font-bold text-slate-900">Silqueen Automation</span>
+            </Link>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
   const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Automations', href: '/flows', icon: Zap },
