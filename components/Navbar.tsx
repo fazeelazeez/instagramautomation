@@ -30,14 +30,13 @@ export default function Navbar() {
   }, []);
 
   const handleDisconnect = async () => {
-    if (confirm("Are you sure you want to disconnect your Instagram account? This will stop all automations.")) {
-      const result = await disconnectAccount();
-      if (result.success) {
-        setIsLinked(false);
-        router.refresh();
-      } else {
-        alert("Failed to disconnect: " + result.error);
-      }
+    setShowDisconnectModal(false);
+    const result = await disconnectAccount();
+    if (result.success) {
+      setIsLinked(false);
+      router.refresh();
+    } else {
+      alert("Failed to disconnect: " + result.error);
     }
   };
 
@@ -84,62 +83,66 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-lg border-b border-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
-          {/* Logo & Brand */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <img src="/logo.png" alt="SilQueen Designs Logo" className="h-10 w-auto group-hover:scale-105 transition-transform" />
-          </Link>
+    <>
+      <nav className="border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Instagram className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-bold text-xl tracking-tight text-slate-900 hidden sm:block">Silqueen</span>
+            </Link>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    isActive 
-                      ? 'text-primary bg-blue-50' 
-                      : 'text-slate-600 hover:text-primary hover:bg-slate-50'
-                  }`}
-                >
-                  <item.icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-slate-400'}`} />
-                  {item.name}
-                </Link>
-              );
-            })}
+            <div className="hidden md:flex items-center gap-1">
+              {[
+                { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
+                { label: 'Automations', icon: Zap, href: '/flows' },
+                { label: 'Analytics', icon: BarChart3, href: '/analytics' },
+                { label: 'Settings', icon: Settings, href: '/settings' },
+              ].map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      isActive 
+                        ? 'bg-blue-50 text-blue-600' 
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-4">
             {isLinked ? (
               <button 
-                onClick={handleDisconnect}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                title="Disconnect Instagram"
+                onClick={() => setShowDisconnectModal(true)}
+                className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl text-sm font-medium transition-all"
               >
                 <Link2Off className="w-4 h-4" />
-                <span className="hidden lg:inline">Disconnect Account</span>
+                <span className="hidden sm:inline">Disconnect Account</span>
               </button>
             ) : (
               <button 
                 onClick={handleConnect}
-                className="insta-button text-sm hidden sm:block"
+                className="bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2"
               >
+                <Instagram className="w-4 h-4" />
                 Connect Account
               </button>
             )}
-            <div className="h-6 w-[1px] bg-slate-200 hidden md:block"></div>
-            <button 
-              onClick={handleSignout}
-              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all group relative"
-              title="Sign Out"
-            >
+            
+            <div className="w-px h-6 bg-slate-100 mx-2" />
+            
+            <button onClick={handleSignout} className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
               <LogOut className="w-5 h-5" />
-              <span className="sr-only">Sign Out</span>
             </button>
           </div>
         </div>
