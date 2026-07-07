@@ -11,7 +11,8 @@ import {
   Settings, 
   LogOut, 
   Link2Off,
-  Instagram 
+  Instagram,
+  CheckCircle 
 } from 'lucide-react';
 import { isAccountLinked, disconnectAccount, syncExistingToken } from '@/app/actions/accounts';
 
@@ -20,6 +21,7 @@ export default function Navbar() {
   const router = useRouter();
   const [isLinked, setIsLinked] = React.useState<boolean>(true); // Default to true to avoid flash
   const [showDisconnectModal, setShowDisconnectModal] = React.useState(false);
+  const [showSuccessModal, setShowSuccessModal] = React.useState(false);
 
   React.useEffect(() => {
     async function checkStatus() {
@@ -68,7 +70,7 @@ export default function Navbar() {
         syncExistingToken().then((result) => {
           if (result.success) {
             setIsLinked(true);
-            console.log("Account connected successfully!");
+            setShowSuccessModal(true);
             router.refresh();
           } else {
             console.error("Connection Error: " + result.error);
@@ -86,15 +88,14 @@ export default function Navbar() {
       <nav className="border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative w-10 h-10 overflow-hidden rounded-xl border border-slate-100 shadow-sm group-hover:scale-105 transition-transform">
+            <Link href="/" className="flex items-center group">
+              <div className="relative w-40 h-12 overflow-hidden group-hover:scale-105 transition-transform">
                 <img 
                   src="/logo.png" 
                   alt="Silqueen Logo" 
-                  className="w-full h-full object-contain p-1"
+                  className="w-full h-full object-contain object-left"
                 />
               </div>
-              <span className="font-bold text-xl tracking-tight text-slate-900 hidden sm:block">Silqueen</span>
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
@@ -186,6 +187,41 @@ export default function Navbar() {
                 className="flex-1 p-4 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
               >
                 Yes, Disconnect
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setShowSuccessModal(false)}
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-md relative z-10 overflow-hidden"
+          >
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-8 h-8 text-emerald-500" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Account Linked!</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                Your Instagram account has been successfully connected to Silqueen. Your automations are now active!
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50/50">
+              <button 
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full py-4 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-lg transition-all"
+              >
+                Great, let's go!
               </button>
             </div>
           </motion.div>
