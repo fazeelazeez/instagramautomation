@@ -64,18 +64,20 @@ export default function Navbar() {
       return;
     }
 
-    window.FB.login(async (response: any) => {
+    window.FB.login((response: any) => {
       if (response.authResponse) {
         const accessToken = response.authResponse.accessToken;
-        const result = await saveInstagramAccount(accessToken);
         
-        if (result.success) {
-          setIsLinked(true);
-          alert("Account connected successfully!");
-          router.refresh();
-        } else {
-          alert("Failed to save account: " + result.error);
-        }
+        // Use a separate async call to save the token
+        saveInstagramAccount(accessToken).then((result) => {
+          if (result.success) {
+            setIsLinked(true);
+            alert("Account connected successfully!");
+            router.refresh();
+          } else {
+            alert("Failed to save account: " + result.error);
+          }
+        });
       } else {
         console.log('User cancelled login or did not fully authorize.');
       }
