@@ -4,8 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Zap, BarChart3, Settings, LogOut } from 'lucide-react';
-import { isAccountLinked } from '@/app/actions/accounts';
+import { LayoutDashboard, Zap, BarChart3, Settings, LogOut, Link2Off } from 'lucide-react';
+import { isAccountLinked, disconnectAccount } from '@/app/actions/accounts';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -19,6 +19,18 @@ export default function Navbar() {
     }
     checkStatus();
   }, []);
+
+  const handleDisconnect = async () => {
+    if (confirm("Are you sure you want to disconnect your Instagram account? This will stop all automations.")) {
+      const result = await disconnectAccount();
+      if (result.success) {
+        setIsLinked(false);
+        router.refresh();
+      } else {
+        alert("Failed to disconnect: " + result.error);
+      }
+    }
+  };
 
   // Navbar now only renders for dashboard pages due to Route Group layout
   // We can simplify the logic here
@@ -93,7 +105,16 @@ export default function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-4">
-            {!isLinked && (
+            {isLinked ? (
+              <button 
+                onClick={handleDisconnect}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                title="Disconnect Instagram"
+              >
+                <Link2Off className="w-4 h-4" />
+                <span className="hidden lg:inline">Disconnect Account</span>
+              </button>
+            ) : (
               <button 
                 onClick={handleConnect}
                 className="insta-button text-sm hidden sm:block"

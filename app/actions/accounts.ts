@@ -24,3 +24,26 @@ export async function isAccountLinked() {
     return false;
   }
 }
+
+/**
+ * Disconnects the Instagram account by removing all records from the 
+ * instagram_accounts table.
+ */
+export async function disconnectAccount() {
+  try {
+    const { error } = await supabase
+      .from('instagram_accounts')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+    if (error) {
+      console.error('Error disconnecting account:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Unexpected error disconnecting account:', error);
+    return { success: false, error: error.message };
+  }
+}
