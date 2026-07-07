@@ -20,104 +20,122 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // ALWAYS return 200 OK immediately — Meta requires fast response
+  const body = await request.json().catch(() => ({}));
+  console.log('Received Webhook:', JSON.stringify(body, null, 2));
+
+  // Process in background — don't let any error stop the 200 response
+  processWebhook(body).catch(err => console.error('Background processing error:', err));
+
+  return NextResponse.json({ status: 'success' });
+}
+
+async function processWebhook(body: any) {
+  // Log raw incoming webhook — wrapped safely
   try {
-    const body = await request.json();
-    console.log('Received Webhook:', JSON.stringify(body, null, 2));
+    await supabase.from('automation_logs').insert([{
+      action_taken: 'RAW_WEBHOOK_RECEIVED',
+      status: 'received',
+      sender_handle: 'META',
+      instagram_post_id: 'RAW_' + Date.now()
+    }]);
+  } catch (logErr) {
+    console.error('DB log failed (non-critical):', logErr);
+  }
 
-    // DEBUG: Log EVERY incoming webhook to database so we can see what Meta is sending
-    try {
-      await supabase.from('automation_logs').insert([
-        {
-          action_taken: 'RAW_WEBHOOK_DEBUG',
-          status: 'received',
-          sender_handle: 'META_DEBUG',
-          instagram_post_id: 'RAW_' + Date.now()
+  if (body.object !== 'instagram') {
+    console.log('Not an Instagram event, skipping.');
+    return;
+  }
+
+  for (const entry of (body.entry || [])) {
+    for (const change of (entry.changes || [])) {
+      if (change.field !== 'comments') continue;
+
+      const commentData = change.value;
+      if (!commentData?.text || !commentData?.from?.id) {
+        console.log('Comment data incomplete, skipping.');
+        continue;
+      }
+
+      const commentText = commentData.text.trim().toUpperCase();
+      const commentId = commentData.id;
+      const fromId = commentData.from.id;
+      const fromUsername = commentData.from.username || 'unknown';
+
+      console.log(`Processing comment: "${commentText}" from @${fromUsername}`);
+
+      // Anti-spam check — wrapped safely so it never blocks the flow
+      try {
+        const { data: existingLog } = await supabase
+          .from('automation_logs')
+          .select('id')
+          .eq('instagram_post_id', commentId)
+          .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors
+
+        if (existingLog) {
+          console.log('Already processed comment:', commentId);
+          continue;
         }
-      ]);
-    } catch (err) {
-      console.error('Failed to log raw webhook:', err);
-    }
+      } catch (spamErr) {
+        console.error('Anti-spam check failed (continuing anyway):', spamErr);
+        // Don't return — continue processing even if this check fails
+      }
 
-    if (body.object === 'instagram') {
-      for (const entry of body.entry) {
-        for (const change of entry.changes) {
-          if (change.field === 'comments') {
-            const commentData = change.value;
-            const commentText = commentData.text.trim().toUpperCase();
-            const commentId = commentData.id;
-            const fromId = commentData.from.id;
+      // Find matching automation flow
+      let flow: any = null;
+      try {
+        const { data } = await supabase
+          .from('automation_flows')
+          .select('*')
+          .eq('trigger_keyword', commentText)
+          .eq('is_active', true)
+          .maybeSingle();
+        flow = data;
+      } catch (flowErr) {
+        console.error('Flow lookup failed:', flowErr);
+      }
 
-            // 1. Check if we have already processed this comment ID (Anti-Spam)
-            const { data: existingLog } = await supabase
-              .from('automation_logs')
-              .select('id')
-              .eq('instagram_post_id', commentId) // Using this field for Comment ID
-              .single();
+      if (!flow) {
+        console.log(`No active flow found for keyword: "${commentText}"`);
+        continue;
+      }
 
-            if (existingLog) {
-              console.log('Comment already processed, skipping:', commentId);
-              continue;
-            }
+      console.log('Flow matched! Executing:', flow.name);
 
-            // 🚀 DIRECT BYPASS FOR TESTING
-          if (commentText === 'PRICE' || commentText === 'TEST') {
-            console.log('Bypass triggered for keyword:', commentText);
-            try {
-              await replyToComment(commentData.id, "Bot is ALIVE! 🤖✨ Checking your request now...");
-              await sendInstagramDM(commentData.from.id, "Hey! This is the direct test. If you see this, the bot connection is 100% working! 🚀");
-            } catch (dmErr) {
-              console.error('Direct Bypass Error:', dmErr);
-            }
-          }
-
-          // Search for automation flows in the database
-          const { data: flow, error: flowError } = await supabase
-              .from('automation_flows')
-              .select('*')
-              .eq('trigger_keyword', commentText)
-              .eq('is_active', true)
-              .single();
-
-            if (flow) {
-              console.log('Flow detected! Triggering automation:', flow.name);
-
-              // 3. Execute actions with individual try-catches
-              try {
-                if (flow.response_comment) {
-                  await replyToComment(commentId, flow.response_comment);
-                }
-              } catch (err) {
-                console.error('Failed to reply to comment:', err);
-              }
-
-              try {
-                if (flow.response_dm) {
-                  await sendInstagramDM(fromId, flow.response_dm);
-                }
-              } catch (err) {
-                console.error('Failed to send DM (Check permissions/Tester roles):', err);
-              }
-
-              // 4. Log the success to database to prevent repeats
-              await supabase.from('automation_logs').insert([
-                {
-                  flow_id: flow.id,
-                  instagram_post_id: commentId,
-                  sender_handle: commentData.from.username,
-                  action_taken: 'both',
-                  status: 'processed'
-                }
-              ]);
-            }
-          }
+      // Reply to comment
+      if (flow.response_comment) {
+        try {
+          await replyToComment(commentId, flow.response_comment);
+          console.log('Comment reply sent ✅');
+        } catch (err) {
+          console.error('Failed to reply to comment:', err);
         }
       }
-    }
 
-    // ALWAYS return 200 OK to Meta to stop retries
-    return NextResponse.json({ status: 'success' });
-  } catch (error: any) {
-    console.error('Webhook Critical Error:', error);
-    return NextResponse.json({ status: 'success' }); // Still return success to avoid loops
+      // Send DM
+      if (flow.response_dm) {
+        try {
+          await sendInstagramDM(fromId, flow.response_dm);
+          console.log('DM sent ✅');
+        } catch (err) {
+          console.error('Failed to send DM:', err);
+        }
+      }
+
+      // Log success
+      try {
+        await supabase.from('automation_logs').insert([{
+          flow_id: flow.id,
+          instagram_post_id: commentId,
+          sender_handle: fromUsername,
+          action_taken: 'both',
+          status: 'processed'
+        }]);
+        console.log('Success logged to DB ✅');
+      } catch (logErr) {
+        console.error('Failed to log success (non-critical):', logErr);
+      }
+    }
   }
 }
