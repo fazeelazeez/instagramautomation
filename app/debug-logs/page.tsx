@@ -19,8 +19,17 @@ export default async function DebugLogs() {
 
   return (
     <div className="p-8 font-mono text-xs">
-      <h1 className="text-xl font-bold mb-4 text-blue-600">Silqueen System Health</h1>
-      
+      {/* Auto-refresh every 5 seconds for live monitoring */}
+      <meta httpEquiv="refresh" content="5" />
+
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-bold text-blue-600">Silqueen System Health</h1>
+        <div className="flex items-center gap-2 text-emerald-600 text-[11px] font-semibold">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          LIVE — Auto-refreshing every 5s
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {Object.entries(healthCheck).map(([key, value]) => (
           <div key={key} className={`p-4 rounded-2xl border ${value ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
@@ -30,21 +39,32 @@ export default async function DebugLogs() {
         ))}
       </div>
 
-      <h2 className="text-lg font-bold mb-4 text-slate-700">Recent Activity</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold text-slate-700">Recent Activity</h2>
+        <span className="text-slate-400 text-[10px]">{logs?.length || 0} events</span>
+      </div>
+
       {logError && <div className="text-red-500 mb-4 font-bold p-4 bg-red-50 rounded-xl">Database Error: {logError.message}</div>}
+
       <div className="space-y-2">
         {logs?.map((log: any) => (
-          <div key={log.id} className="p-4 border border-slate-100 rounded bg-slate-50">
-            <div className="text-slate-400">{log.created_at}</div>
-            <div className="font-bold text-slate-700">{log.action_taken} - {log.status}</div>
-            <div className="text-slate-500">Handle: {log.sender_handle}</div>
-            <pre className="mt-2 text-[10px] overflow-auto max-h-40 bg-white p-2 border border-slate-50">
-              {JSON.stringify(log, null, 2)}
-            </pre>
+          <div key={log.id} className={`p-4 border rounded-xl ${log.status === 'processed' ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100'}`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className={`font-bold text-[11px] px-2 py-0.5 rounded-full ${log.status === 'processed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+                {log.status === 'processed' ? '✅ PROCESSED' : '📡 RECEIVED'}
+              </span>
+              <span className="text-slate-400 text-[10px]">{new Date(log.created_at).toLocaleTimeString()}</span>
+            </div>
+            <div className="font-bold text-slate-700 mt-1">{log.action_taken}</div>
+            {log.sender_handle && log.sender_handle !== 'META' && (
+              <div className="text-blue-600 font-semibold mt-0.5">@{log.sender_handle}</div>
+            )}
           </div>
         ))}
         {(!logs || logs.length === 0) && (
-          <div className="text-slate-400">No logs found yet. Meta has not sent any events or the database is still disconnected.</div>
+          <div className="text-slate-400 p-8 text-center border-2 border-dashed border-slate-200 rounded-xl">
+            ⏳ Waiting for comments... Comment "Price" on Instagram to see it appear here live!
+          </div>
         )}
       </div>
     </div>
