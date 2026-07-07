@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, Zap, BarChart3, Settings, LogOut, Link2Off } from 'lucide-react';
-import { isAccountLinked, disconnectAccount, saveInstagramAccount } from '@/app/actions/accounts';
+import { isAccountLinked, disconnectAccount, syncExistingToken } from '@/app/actions/accounts';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -58,34 +58,15 @@ export default function Navbar() {
     router.refresh();
   };
 
-  const handleConnect = () => {
-    if (!window.FB) {
-      alert("Facebook SDK not loaded yet. Please wait a moment.");
-      return;
+  const handleConnect = async () => {
+    const result = await syncExistingToken();
+    if (result.success) {
+      setIsLinked(true);
+      alert("Account connected successfully!");
+      router.refresh();
+    } else {
+      alert("Connection failed: " + result.error);
     }
-
-    window.FB.login((response: any) => {
-      if (response.authResponse) {
-        const accessToken = response.authResponse.accessToken;
-        
-        // Use a separate async call to save the token
-        saveInstagramAccount(accessToken).then((result) => {
-          if (result.success) {
-            setIsLinked(true);
-            alert("Account connected successfully!");
-            router.refresh();
-          } else {
-            console.error('Save failed:', result);
-            alert("Connection Error: " + result.error + "\n\nDetails: " + JSON.stringify(result));
-          }
-        });
-      } else {
-        console.log('User cancelled login or did not fully authorize.');
-      }
-    }, {
-      scope: 'public_profile,instagram_basic,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_read_engagement,pages_manage_metadata',
-      return_scopes: true
-    });
   };
 
   return (

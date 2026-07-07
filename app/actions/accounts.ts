@@ -49,6 +49,47 @@ export async function disconnectAccount() {
 }
 
 /**
+ * Syncs the existing permanent token from environment variables into the database.
+ * This bypasses the Facebook Login flow for internal use.
+ */
+export async function syncExistingToken() {
+  try {
+    const token = process.env.INSTAGRAM_PAGE_ACCESS_TOKEN;
+    if (!token) {
+      return { success: false, error: 'No token found in environment variables.' };
+    }
+
+    // Get the Instagram Business Account linked to this page token
+    const igResponse = await fetch(`https://graph.facebook.com/v20.0/me?fields=id,name,instagram_business_account&access_token=${token}`);
+    const igData = await igResponse.json();
+    console.log('Sync token IG data:', igData);
+
+    const igId = igData.instagram_business_account?.id || igData.id;
+    const name = igData.name || 'Silqueen';
+
+    if (!igId) {
+      return { success: false, error: 'Could not find Instagram account. Raw: ' + JSON.stringify(igData) };
+    }
+
+    const { error } = await supabase
+      .from('instagram_accounts')
+      .upsert({
+        instagram_business_id: igId,
+        access_token: token,
+        username: name,
+      }, { onConflict: 'instagram_business_id' });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Saves or updates an Instagram account in the database.
  */
 export async function saveInstagramAccount(accessToken: string) {
