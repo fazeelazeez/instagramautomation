@@ -1,66 +1,67 @@
-import { NextResponse } from 'next/server';
-
 const PAGE_ACCESS_TOKEN = process.env.INSTAGRAM_PAGE_ACCESS_TOKEN;
+const INSTAGRAM_BUSINESS_ID = '17841462007877659'; // silqueendesigns
 
 /**
- * Sends a Direct Message to an Instagram user.
+ * Sends a Direct Message to an Instagram user via Instagram API.
  * @param recipientId - The Instagram-scoped ID of the user.
  * @param messageText - The text to send.
  */
 export async function sendInstagramDM(recipientId: string, messageText: string) {
-  const url = `https://graph.facebook.com/v20.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+  const url = `https://graph.instagram.com/v25.0/${INSTAGRAM_BUSINESS_ID}/messages`;
 
   const payload = {
     recipient: { id: recipientId },
     message: { text: messageText }
   };
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+  console.log('Sending DM to:', recipientId);
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(`Instagram API Error: ${JSON.stringify(data)}`);
-    }
-    console.log('DM sent successfully:', data);
-    return data;
-  } catch (error) {
-    console.error('Error sending DM:', error);
-    throw error;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${PAGE_ACCESS_TOKEN}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    console.error('DM API Error:', JSON.stringify(data));
+    throw new Error(`DM Error: ${JSON.stringify(data)}`);
   }
+  console.log('DM sent successfully ✅:', data);
+  return data;
 }
 
 /**
- * Sends a public reply to an Instagram comment.
+ * Sends a public reply to an Instagram comment via Instagram API.
  * @param commentId - The ID of the comment to reply to.
  * @param messageText - The text of the reply.
  */
 export async function replyToComment(commentId: string, messageText: string) {
-  const url = `https://graph.facebook.com/v20.0/${commentId}/replies?access_token=${PAGE_ACCESS_TOKEN}`;
+  const url = `https://graph.instagram.com/v25.0/${commentId}/replies`;
 
   const payload = {
     message: messageText
   };
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+  console.log('Replying to comment:', commentId);
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(`Instagram API Error: ${JSON.stringify(data)}`);
-    }
-    console.log('Comment reply sent successfully:', data);
-    return data;
-  } catch (error) {
-    console.error('Error replying to comment:', error);
-    throw error;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${PAGE_ACCESS_TOKEN}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    console.error('Comment Reply API Error:', JSON.stringify(data));
+    throw new Error(`Comment Reply Error: ${JSON.stringify(data)}`);
   }
+  console.log('Comment reply sent successfully ✅:', data);
+  return data;
 }
