@@ -4,13 +4,22 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Zap, BarChart3, Settings, LogOut, Link2Off } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Zap, 
+  BarChart3, 
+  Settings, 
+  LogOut, 
+  Link2Off,
+  Instagram 
+} from 'lucide-react';
 import { isAccountLinked, disconnectAccount, syncExistingToken } from '@/app/actions/accounts';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isLinked, setIsLinked] = React.useState<boolean>(true); // Default to true to avoid flash
+  const [showDisconnectModal, setShowDisconnectModal] = React.useState(false);
 
   React.useEffect(() => {
     async function checkStatus() {
@@ -39,16 +48,6 @@ export default function Navbar() {
       alert("Failed to disconnect: " + result.error);
     }
   };
-
-  // Navbar now only renders for dashboard pages due to Route Group layout
-  // We can simplify the logic here
-
-  const navItems = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Automations', href: '/flows', icon: Zap },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Settings', href: '/settings', icon: Settings },
-  ];
 
   const handleSignout = () => {
     // Clear the isLoggedIn cookie
@@ -146,7 +145,48 @@ export default function Navbar() {
             </button>
           </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* Disconnect Modal */}
+      {showDisconnectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setShowDisconnectModal(false)}
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-md relative z-10 overflow-hidden"
+          >
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Link2Off className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Disconnect Instagram?</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                This will stop all your automated replies and DMs immediately. You can reconnect at any time.
+              </p>
+            </div>
+            <div className="flex border-t border-slate-50">
+              <button 
+                onClick={() => setShowDisconnectModal(false)}
+                className="flex-1 p-4 text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors border-r border-slate-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDisconnect}
+                className="flex-1 p-4 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Yes, Disconnect
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </>
   );
 }
