@@ -86,9 +86,13 @@ export default function Navbar() {
       <nav className="border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Instagram className="w-5 h-5 text-white" />
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="relative w-10 h-10 overflow-hidden rounded-xl border border-slate-100 shadow-sm group-hover:scale-105 transition-transform">
+                <img 
+                  src="/logo.png" 
+                  alt="Silqueen Logo" 
+                  className="w-full h-full object-contain p-1"
+                />
               </div>
               <span className="font-bold text-xl tracking-tight text-slate-900 hidden sm:block">Silqueen</span>
             </Link>
