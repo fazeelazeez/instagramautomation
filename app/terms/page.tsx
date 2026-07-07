@@ -15,7 +15,7 @@ export default function TermsOfService() {
       <section>
         <h2 className="text-2xl font-semibold text-slate-800 mb-4">2. Description of Service</h2>
         <p>
-          SILQUEEN DESIGNS operates an internal Instagram automation tool (Silqueen Automation (bot.silqueen.com)) designed exclusively 
+          SILQUEEN DESIGNS operates an internal Instagram automation tool (bot.silqueen.com) designed exclusively 
           for our business engagement. The service provides:
         </p>
         <ul className="list-disc pl-6 space-y-2 mt-2">

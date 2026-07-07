@@ -33,7 +33,6 @@ export default function Navbar() {
           <div className="flex justify-center h-16 items-center">
             <Link href="/" className="flex items-center gap-3 group">
               <img src="/logo.png" alt="SilQueen Designs Logo" className="h-10 w-auto group-hover:scale-105 transition-transform" />
-              <span className="text-xl font-bold text-slate-900">Silqueen Automation</span>
             </Link>
           </div>
         </div>

@@ -6,7 +6,7 @@ export default function DataDeletion() {
       <section>
         <p className="text-lg">
           At SILQUEEN DESIGNS, we prioritize your data privacy. You have the full right to request the deletion of 
-          any personal data collected through our Instagram automation tool (Silqueen Automation (bot.silqueen.com)).
+          any personal data collected through our Instagram automation tool (bot.silqueen.com).
         </p>
       </section>
 
