@@ -54,17 +54,22 @@ export async function disconnectAccount() {
 export async function saveInstagramAccount(accessToken: string) {
   try {
     // 1. Get the Facebook Pages linked to this token
+    console.log('Fetching Facebook Pages...');
     const pagesResponse = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${accessToken}`);
     const pagesData = await pagesResponse.json();
+    console.log('Pages found:', pagesData);
 
     if (!pagesData.data || pagesData.data.length === 0) {
+      console.error('No pages found in Meta response');
       return { success: false, error: 'No Facebook Pages found linked to this account.' };
     }
 
     // 2. For the first page, get the Instagram Business Account ID
     const page = pagesData.data[0];
+    console.log('Using page:', page.name, page.id);
     const igResponse = await fetch(`https://graph.facebook.com/v20.0/${page.id}?fields=instagram_business_account&access_token=${accessToken}`);
     const igData = await igResponse.json();
+    console.log('Instagram Data:', igData);
 
     const igId = igData.instagram_business_account?.id;
     if (!igId) {
