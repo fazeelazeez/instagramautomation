@@ -69,6 +69,12 @@ export default function LoginPage() {
             Sign In
           </button>
         </form>
+
+        <div className="mt-8 pt-6 border-t border-slate-800 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[10px] uppercase tracking-widest font-bold text-slate-500">
+          <a href="/privacy" className="hover:text-slate-300 transition-colors">Privacy</a>
+          <a href="/terms" className="hover:text-slate-300 transition-colors">Terms</a>
+          <a href="/deletion" className="hover:text-slate-300 transition-colors">Deletion</a>
+        </div>
       </div>
     </div>
   );
