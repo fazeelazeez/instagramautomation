@@ -53,18 +53,20 @@ export async function disconnectAccount() {
  */
 export async function saveInstagramAccount(accessToken: string) {
   try {
-    // 1. Get the Facebook Pages linked to this token
-    console.log('Fetching Facebook Pages...');
-    const pagesResponse = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${accessToken}`);
-    const pagesData = await pagesResponse.json();
-    console.log('Pages found:', pagesData);
+    // 1. Get the Facebook Pages linked to this token using a more direct field search
+    console.log('Fetching Pages via field search...');
+    const pagesResponse = await fetch(`https://graph.facebook.com/v20.0/me?fields=accounts{id,name,instagram_business_account,access_token}&access_token=${accessToken}`);
+    const rawData = await pagesResponse.json();
+    console.log('Raw Meta Data:', rawData);
 
-    if (!pagesData.data || pagesData.data.length === 0) {
+    const pagesData = rawData.accounts;
+
+    if (!pagesData || !pagesData.data || pagesData.data.length === 0) {
       console.error('No pages found in Meta response');
       return { 
         success: false, 
         error: 'No Facebook Pages found linked to this account.',
-        debug: JSON.stringify(pagesData) // Send the full response for debugging
+        debug: JSON.stringify(rawData)
       };
     }
 
