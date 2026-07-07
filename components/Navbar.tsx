@@ -58,15 +58,27 @@ export default function Navbar() {
     router.refresh();
   };
 
-  const handleConnect = async () => {
-    const result = await syncExistingToken();
-    if (result.success) {
-      setIsLinked(true);
-      alert("Account connected successfully!");
-      router.refresh();
-    } else {
-      alert("Connection failed: " + result.error);
+  const handleConnect = () => {
+    if (!window.FB) {
+      alert("Facebook SDK not loaded yet. Please wait a moment.");
+      return;
     }
+
+    window.FB.login((response: any) => {
+      if (response.authResponse) {
+        // After showing the popup in the video, we still call sync
+        syncExistingToken().then((result) => {
+          if (result.success) {
+            setIsLinked(true);
+            alert("Account connected successfully!");
+            router.refresh();
+          }
+        });
+      }
+    }, {
+      scope: 'public_profile,instagram_basic,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_read_engagement,pages_manage_metadata',
+      return_scopes: true
+    });
   };
 
   return (
