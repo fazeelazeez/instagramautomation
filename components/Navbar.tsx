@@ -34,6 +34,30 @@ export default function Navbar() {
     router.refresh();
   };
 
+  const handleConnect = () => {
+    if (!window.FB) {
+      alert("Facebook SDK not loaded yet. Please wait a moment.");
+      return;
+    }
+
+    window.FB.login((response: any) => {
+      if (response.authResponse) {
+        console.log('Welcome! Fetching your information.... ');
+        const accessToken = response.authResponse.accessToken;
+        console.log('Short-lived Access Token:', accessToken);
+        
+        // In a real app, you would send this token to your backend to exchange 
+        // for a long-lived Page Access Token and save it to the database.
+        alert("Account connected successfully! Token received (check console).");
+      } else {
+        console.log('User cancelled login or did not fully authorize.');
+      }
+    }, {
+      scope: 'instagram_basic,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_read_engagement',
+      return_scopes: true
+    });
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-lg border-b border-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -66,7 +90,10 @@ export default function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-4">
-            <button className="insta-button text-sm hidden sm:block">
+            <button 
+              onClick={handleConnect}
+              className="insta-button text-sm hidden sm:block"
+            >
               Connect Account
             </button>
             <div className="h-6 w-[1px] bg-slate-200 hidden md:block"></div>
