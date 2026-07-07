@@ -70,8 +70,10 @@ export default function Navbar() {
         syncExistingToken().then((result) => {
           if (result.success) {
             setIsLinked(true);
-            alert("Account connected successfully!");
+            console.log("Account connected successfully!");
             router.refresh();
+          } else {
+            console.error("Connection Error: " + result.error);
           }
         });
       }
