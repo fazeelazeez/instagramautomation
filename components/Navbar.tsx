@@ -16,6 +16,15 @@ export default function Navbar() {
     async function checkStatus() {
       const status = await isAccountLinked();
       setIsLinked(status);
+      
+      // Debug check for SDK
+      setTimeout(() => {
+        if (!window.FB) {
+          console.warn("Facebook SDK not detected after 3 seconds.");
+        } else {
+          console.log("Facebook SDK is ready.");
+        }
+      }, 3000);
     }
     checkStatus();
   }, []);
