@@ -87,9 +87,11 @@ export default function TermsOfService() {
           For any questions regarding these Terms of Service, please reach out to:
         </p>
         <div className="mt-4 bg-slate-50 p-6 rounded-lg border border-slate-100">
-          <p><strong>Business Name:</strong> SILQUEEN DESIGNS</p>
-          <p><strong>Email:</strong> Silqueendesigns@gmail.com</p>
-          <p><strong>Location:</strong> Perumbavoor, Kerala, India</p>
+          <p><strong>Legal Business Name:</strong> SILQUEEN DESIGNS</p>
+          <p><strong>Address:</strong> SHOP 1, CHERUPULLYPARAMBIL BUILDING, PONJASSERY, PERUMBAVOOR, ERNAKULAM, KERALA, 683547, India</p>
+          <p><strong>Contact Email:</strong> Silqueendesigns@gmail.com</p>
+          <p><strong>Data Protection Contact:</strong> FASNA M M (Proprietor)</p>
+          <p><strong>Governing Law:</strong> India</p>
         </div>
       </section>
     </LegalLayout>

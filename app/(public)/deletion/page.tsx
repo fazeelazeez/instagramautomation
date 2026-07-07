@@ -63,8 +63,13 @@ export default function DataDeletion() {
         <p>
           For any specific concerns regarding your data, you may reach out to our Data Protection Contact:
         </p>
-        <p className="mt-2 font-medium text-slate-800">FASNA M M (Proprietor)</p>
-        <p>Email: Silqueendesigns@gmail.com</p>
+        <div className="mt-4 bg-slate-50 p-6 rounded-lg border border-slate-100">
+          <p><strong>Legal Business Name:</strong> SILQUEEN DESIGNS</p>
+          <p><strong>Address:</strong> SHOP 1, CHERUPULLYPARAMBIL BUILDING, PONJASSERY, PERUMBAVOOR, ERNAKULAM, KERALA, 683547, India</p>
+          <p><strong>Contact Email:</strong> Silqueendesigns@gmail.com</p>
+          <p><strong>Data Protection Contact:</strong> FASNA M M (Proprietor)</p>
+          <p><strong>Governing Law:</strong> India</p>
+        </div>
       </section>
     </LegalLayout>
   );
