@@ -59,8 +59,19 @@ export async function POST(request: Request) {
               continue;
             }
 
-            // 2. Fetch matching flow
-            const { data: flow } = await supabase
+            // 🚀 DIRECT BYPASS FOR TESTING
+          if (commentText === 'PRICE' || commentText === 'TEST') {
+            console.log('Bypass triggered for keyword:', commentText);
+            try {
+              await replyToComment(commentData.id, "Bot is ALIVE! 🤖✨ Checking your request now...");
+              await sendInstagramDM(commentData.from.id, "Hey! This is the direct test. If you see this, the bot connection is 100% working! 🚀");
+            } catch (dmErr) {
+              console.error('Direct Bypass Error:', dmErr);
+            }
+          }
+
+          // Search for automation flows in the database
+          const { data: flow, error: flowError } = await supabase
               .from('automation_flows')
               .select('*')
               .eq('trigger_keyword', commentText)
