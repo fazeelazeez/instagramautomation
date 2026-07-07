@@ -73,7 +73,7 @@ export default function Home() {
             </div>
             
             {[
-              { name: 'Keyword "PRICE" → DM', status: 'Active', hits: 0, lastRun: 'Never' },
+              { name: 'Keyword "PRICE" → DM', status: 'Paused', hits: 0, lastRun: 'Never' },
             ].map((flow) => (
               <div key={flow.name} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
                 <div className="flex items-center gap-4">
