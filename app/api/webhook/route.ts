@@ -30,8 +30,7 @@ export async function POST(request: Request) {
         action_taken: 'RAW_WEBHOOK_DEBUG',
         status: 'received',
         sender_handle: 'META_DEBUG',
-        instagram_post_id: 'RAW_' + Date.now(),
-        metadata: body // Assuming we have a JSONB column or similar
+        instagram_post_id: 'RAW_' + Date.now()
       }
     ]).catch(err => console.error('Failed to log raw webhook:', err));
 
