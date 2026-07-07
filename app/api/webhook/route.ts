@@ -25,14 +25,18 @@ export async function POST(request: Request) {
     console.log('Received Webhook:', JSON.stringify(body, null, 2));
 
     // DEBUG: Log EVERY incoming webhook to database so we can see what Meta is sending
-    await supabase.from('automation_logs').insert([
-      {
-        action_taken: 'RAW_WEBHOOK_DEBUG',
-        status: 'received',
-        sender_handle: 'META_DEBUG',
-        instagram_post_id: 'RAW_' + Date.now()
-      }
-    ]).catch(err => console.error('Failed to log raw webhook:', err));
+    try {
+      await supabase.from('automation_logs').insert([
+        {
+          action_taken: 'RAW_WEBHOOK_DEBUG',
+          status: 'received',
+          sender_handle: 'META_DEBUG',
+          instagram_post_id: 'RAW_' + Date.now()
+        }
+      ]);
+    } catch (err) {
+      console.error('Failed to log raw webhook:', err);
+    }
 
     if (body.object === 'instagram') {
       for (const entry of body.entry) {
