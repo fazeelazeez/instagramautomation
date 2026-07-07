@@ -20,13 +20,18 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  // ALWAYS return 200 OK immediately — Meta requires fast response
   const body = await request.json().catch(() => ({}));
   console.log('Received Webhook:', JSON.stringify(body, null, 2));
 
-  // Process in background — don't let any error stop the 200 response
-  processWebhook(body).catch(err => console.error('Background processing error:', err));
+  // IMPORTANT: On Vercel, we MUST await before returning — background tasks get killed instantly!
+  // Meta allows up to 20 seconds for a response, so this is safe.
+  try {
+    await processWebhook(body);
+  } catch (err) {
+    console.error('Webhook processing error:', err);
+  }
 
+  // Always return 200 to Meta
   return NextResponse.json({ status: 'success' });
 }
 
