@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sendInstagramDM, replyToComment } from '@/lib/instagram';
+import { supabase } from '@/lib/supabase';
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'silqueen_automation_2026';
 
@@ -11,6 +12,7 @@ export async function GET(request: Request) {
   const challenge = searchParams.get('hub.challenge');
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+    console.log('WEBHOOK_VERIFIED');
     return new Response(challenge, { status: 200 });
   } else {
     return new Response('Verification failed', { status: 403 });
@@ -20,23 +22,44 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    console.log('Received Webhook:', JSON.stringify(body, null, 2));
 
     if (body.object === 'instagram') {
       for (const entry of body.entry) {
         for (const change of entry.changes) {
           if (change.field === 'comments') {
             const commentData = change.value;
-            const commentText = commentData.text.toLowerCase();
+            const commentText = commentData.text.trim().toUpperCase(); // Normalize for matching
             const commentId = commentData.id;
             const fromId = commentData.from.id;
 
-            // Automation Logic
-            if (commentText.includes('price') || commentText.includes('details') || commentText.includes('how much')) {
-              // 1. Reply publicly
-              await replyToComment(commentId, "Check your DM for the details! ✨");
+            console.log(`New comment: "${commentText}" from ${fromId}`);
 
-              // 2. Send private DM
-              await sendInstagramDM(fromId, "Hello! The price for this custom Silqueen design is $150. Would you like to proceed with an order?");
+            // 1. Fetch matching flow from Supabase
+            const { data: flow, error } = await supabase
+              .from('automation_flows')
+              .select('*')
+              .eq('trigger_keyword', commentText)
+              .eq('is_active', true)
+              .single();
+
+            if (error) {
+              console.log('No matching active flow found for keyword:', commentText);
+              continue;
+            }
+
+            if (flow) {
+              console.log('Flow detected! Triggering automation:', flow.name);
+
+              // 2. Reply publicly using database content
+              if (flow.response_comment) {
+                await replyToComment(commentId, flow.response_comment);
+              }
+
+              // 3. Send private DM using database content
+              if (flow.response_dm) {
+                await sendInstagramDM(fromId, flow.response_dm);
+              }
             }
           }
         }
