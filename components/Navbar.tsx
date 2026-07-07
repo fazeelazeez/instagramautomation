@@ -4,18 +4,21 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  Zap, 
-  BarChart3, 
-  Settings, 
-  LogOut,
-  Instagram
-} from 'lucide-react';
+import { LayoutDashboard, Zap, BarChart3, Settings, LogOut } from 'lucide-react';
+import { isAccountLinked } from '@/app/actions/accounts';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [isLinked, setIsLinked] = React.useState<boolean>(true); // Default to true to avoid flash
+
+  React.useEffect(() => {
+    async function checkStatus() {
+      const status = await isAccountLinked();
+      setIsLinked(status);
+    }
+    checkStatus();
+  }, []);
 
   // Don't show navbar on login page
   if (pathname === '/login') return null;
@@ -90,12 +93,14 @@ export default function Navbar() {
 
           {/* Actions */}
           <div className="flex items-center gap-4">
-            <button 
-              onClick={handleConnect}
-              className="insta-button text-sm hidden sm:block"
-            >
-              Connect Account
-            </button>
+            {!isLinked && (
+              <button 
+                onClick={handleConnect}
+                className="insta-button text-sm hidden sm:block"
+              >
+                Connect Account
+              </button>
+            )}
             <div className="h-6 w-[1px] bg-slate-200 hidden md:block"></div>
             <button 
               onClick={handleSignout}
