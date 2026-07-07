@@ -120,13 +120,13 @@ async function processWebhook(body: any) {
 
       // Send DM
       if (flow.response_dm) {
-        try {
-          await sendInstagramDM(fromId, flow.response_dm);
-          console.log('DM sent ✅');
-        } catch (err) {
-          console.error('Failed to send DM:', err);
+          try {
+            await sendInstagramDM(commentId, flow.response_dm);
+            console.log('DM sent ✅');
+          } catch (err) {
+            console.error('Failed to send DM:', err);
+          }
         }
-      }
 
       // Log success
       try {

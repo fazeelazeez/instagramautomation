@@ -2,19 +2,20 @@ const PAGE_ACCESS_TOKEN = process.env.INSTAGRAM_PAGE_ACCESS_TOKEN;
 const INSTAGRAM_BUSINESS_ID = '17841462007877659'; // silqueendesigns
 
 /**
- * Sends a Direct Message to an Instagram user via Instagram API.
- * @param recipientId - The Instagram-scoped ID of the user.
+ * Sends a Direct Message to an Instagram user triggered by their comment.
+ * Using comment_id as recipient bypasses the 24-hour window restriction.
+ * @param commentId - The ID of the comment that triggered this DM.
  * @param messageText - The text to send.
  */
-export async function sendInstagramDM(recipientId: string, messageText: string) {
+export async function sendInstagramDM(commentId: string, messageText: string) {
   const url = `https://graph.instagram.com/v25.0/${INSTAGRAM_BUSINESS_ID}/messages`;
 
   const payload = {
-    recipient: { id: recipientId },
+    recipient: { comment_id: commentId },  // Use comment_id not user id!
     message: { text: messageText }
   };
 
-  console.log('Sending DM to:', recipientId);
+  console.log('Sending DM via comment_id:', commentId);
 
   const response = await fetch(url, {
     method: 'POST',
