@@ -14,6 +14,15 @@ import {
 } from 'lucide-react';
 
 export default function Home() {
+  const stats = [
+    { label: 'Total Comments', value: '0', icon: MessageCircle, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'DMs Sent', value: '0', icon: Send, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Automation Hits', value: '0', icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Safety Score', value: '100%', icon: Shield, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  ];
+
+  const recentActivity: any[] = [];
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Main Content */}
@@ -64,9 +73,7 @@ export default function Home() {
             </div>
             
             {[
-              { name: 'Keyword "PRICE" → DM', status: 'Active', hits: 142, lastRun: '2m ago' },
-              { name: 'Story Mention → Thank You DM', status: 'Active', hits: 89, lastRun: '15m ago' },
-              { name: 'Comment "GUIDE" → PDF Link', status: 'Paused', hits: 204, lastRun: 'Yesterday' },
+              { name: 'Keyword "PRICE" → DM', status: 'Active', hits: 0, lastRun: 'Never' },
             ].map((flow) => (
               <div key={flow.name} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -101,20 +108,19 @@ export default function Home() {
                 <p className="text-sm font-semibold text-slate-700">Live Log</p>
               </div>
               <div className="p-4 space-y-4">
-                {[
-                  { user: '@sarah_j', action: 'Triggered Price DM', time: '1m ago' },
-                  { user: '@mike.tech', action: 'Commented "GUIDE"', time: '5m ago' },
-                  { user: '@alex_design', action: 'Sent Story DM', time: '12m ago' },
-                  { user: '@emma_w', action: 'Triggered Price DM', time: '18m ago' },
-                ].map((log, idx) => (
-                  <div key={idx} className="flex justify-between items-start text-sm">
-                    <div>
-                      <p className="font-medium text-slate-900">{log.user}</p>
-                      <p className="text-xs text-slate-500">{log.action}</p>
+                {recentActivity.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-4">No recent activity</p>
+                ) : (
+                  recentActivity.map((log, idx) => (
+                    <div key={idx} className="flex justify-between items-start text-sm">
+                      <div>
+                        <p className="font-medium text-slate-900">{log.user}</p>
+                        <p className="text-xs text-slate-500">{log.action}</p>
+                      </div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">{log.time}</span>
                     </div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400">{log.time}</span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
               <button className="w-full p-3 text-sm font-medium text-primary hover:bg-blue-50 border-t border-slate-50 transition-colors">
                 View Full Logs
