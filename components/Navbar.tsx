@@ -83,7 +83,7 @@ export default function Navbar() {
         console.log('User cancelled login or did not fully authorize.');
       }
     }, {
-      scope: 'instagram_basic,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_read_engagement',
+      scope: 'public_profile,instagram_basic,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_read_engagement,pages_manage_metadata',
       return_scopes: true
     });
   };
