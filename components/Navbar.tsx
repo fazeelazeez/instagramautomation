@@ -75,7 +75,8 @@ export default function Navbar() {
             alert("Account connected successfully!");
             router.refresh();
           } else {
-            alert("Failed to save account: " + result.error);
+            console.error('Save failed:', result);
+            alert("Connection Error: " + result.error + "\n\nDetails: " + JSON.stringify(result));
           }
         });
       } else {
