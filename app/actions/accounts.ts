@@ -61,7 +61,11 @@ export async function saveInstagramAccount(accessToken: string) {
 
     if (!pagesData.data || pagesData.data.length === 0) {
       console.error('No pages found in Meta response');
-      return { success: false, error: 'No Facebook Pages found linked to this account.' };
+      return { 
+        success: false, 
+        error: 'No Facebook Pages found linked to this account.',
+        debug: JSON.stringify(pagesData) // Send the full response for debugging
+      };
     }
 
     // 2. For the first page, get the Instagram Business Account ID
