@@ -3,7 +3,14 @@ import { supabase } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 export default async function DebugLogs() {
-  const { data: logs, error } = await supabase
+  const healthCheck = {
+    url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    anonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    serviceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    instaToken: !!process.env.INSTAGRAM_PAGE_ACCESS_TOKEN,
+  };
+
+  const { data: logs, error: logError } = await supabase
     .from('automation_logs')
     .select('*')
     .order('created_at', { ascending: false })
@@ -11,8 +18,19 @@ export default async function DebugLogs() {
 
   return (
     <div className="p-8 font-mono text-xs">
-      <h1 className="text-xl font-bold mb-4 text-blue-600">Silqueen Debug Logs</h1>
-      {error && <div className="text-red-500 mb-4">Error: {error.message}</div>}
+      <h1 className="text-xl font-bold mb-4 text-blue-600">Silqueen System Health</h1>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {Object.entries(healthCheck).map(([key, value]) => (
+          <div key={key} className={`p-4 rounded-2xl border ${value ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
+            <div className="font-bold uppercase text-[10px] opacity-60 mb-1">{key}</div>
+            <div className="text-sm font-bold">{value ? 'CONNECTED' : 'MISSING'}</div>
+          </div>
+        ))}
+      </div>
+
+      <h2 className="text-lg font-bold mb-4 text-slate-700">Recent Activity</h2>
+      {logError && <div className="text-red-500 mb-4 font-bold p-4 bg-red-50 rounded-xl">Database Error: {logError.message}</div>}
       <div className="space-y-2">
         {logs?.map((log: any) => (
           <div key={log.id} className="p-4 border border-slate-100 rounded bg-slate-50">
