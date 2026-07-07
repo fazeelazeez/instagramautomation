@@ -20,25 +20,8 @@ export default function Navbar() {
     checkStatus();
   }, []);
 
-  // Don't show navbar on login page
-  if (pathname === '/login') return null;
-
-  const isLegalPage = ['/privacy', '/terms', '/deletion'].includes(pathname);
-
-  // Simple public header for legal pages
-  if (isLegalPage) {
-    return (
-      <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-lg border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center h-16 items-center">
-            <Link href="/" className="flex items-center gap-3 group">
-              <img src="/logo.png" alt="SilQueen Designs Logo" className="h-10 w-auto group-hover:scale-105 transition-transform" />
-            </Link>
-          </div>
-        </div>
-      </nav>
-    );
-  }
+  // Navbar now only renders for dashboard pages due to Route Group layout
+  // We can simplify the logic here
 
   const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },

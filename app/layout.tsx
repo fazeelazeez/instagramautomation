@@ -21,7 +21,6 @@ export default function RootLayout({
       <body className={inter.className}>
         <FacebookSDK />
         <div className="min-h-screen bg-[#f8fafc]">
-          <Navbar />
           {children}
         </div>
       </body>
