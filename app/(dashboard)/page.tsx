@@ -33,12 +33,7 @@ export default function Home() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          {[
-            { label: 'Total Comments', value: '1,284', icon: MessageCircle, color: 'text-blue-500', bg: 'bg-blue-50' },
-            { label: 'DMs Sent', value: '852', icon: Send, color: 'text-purple-500', bg: 'bg-purple-50' },
-            { label: 'Automation Hits', value: '431', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
-            { label: 'Safety Score', value: '98%', icon: Shield, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-          ].map((stat, idx) => (
+          {stats.map((stat, idx) => (
             <motion.div 
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}

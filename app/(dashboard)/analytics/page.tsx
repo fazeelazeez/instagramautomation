@@ -6,9 +6,9 @@ import { BarChart3, TrendingUp, Users, MousePointer2 } from 'lucide-react';
 
 export default function AnalyticsPage() {
   const stats = [
-    { label: 'Engagement Rate', value: '4.8%', change: '+1.2%', icon: TrendingUp },
-    { label: 'Followers Gained', value: '1,204', change: '+12%', icon: Users },
-    { label: 'Click-through Rate', value: '2.4%', change: '-0.4%', icon: MousePointer2 },
+    { label: 'Engagement Rate', value: '0%', change: '0%', icon: TrendingUp },
+    { label: 'Followers Gained', value: '0', change: '0%', icon: Users },
+    { label: 'Click-through Rate', value: '0%', change: '0%', icon: MousePointer2 },
   ];
 
   return (
