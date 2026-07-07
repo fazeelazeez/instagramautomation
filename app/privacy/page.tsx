@@ -8,7 +8,7 @@ export default function PrivacyPolicy() {
         <p>
           Welcome to SILQUEEN DESIGNS ("we," "our," or "us"). We are a bridal boutique and ladies' stitching business based in Kerala, India. 
           This Privacy Policy explains how we collect, use, and protect your information when you interact with our Instagram business account 
-          and our internal automation tool, bot.silqueen.com. This policy covers all interactions handled by our automated systems to ensure 
+          and our internal automation tool, bot.silqueen.com (Silqueen Automation). This policy covers all interactions handled by our automated systems to ensure 
           transparency and security for our customers and followers.
         </p>
       </section>

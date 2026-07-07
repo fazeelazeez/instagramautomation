@@ -7,8 +7,8 @@ import FacebookSDK from "@/components/FacebookSDK";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "InstaAuto | Premium Instagram Automation",
-  description: "Next-gen comment and DM automation for Instagram Business accounts.",
+  title: "Silqueen Automation | Internal Instagram Tool",
+  description: "Internal Instagram comment and DM automation for Silqueen Designs.",
 };
 
 export default function RootLayout({
