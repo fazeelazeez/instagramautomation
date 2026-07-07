@@ -59,24 +59,37 @@ export async function syncExistingToken() {
       return { success: false, error: 'No token found in environment variables.' };
     }
 
-    // Get the Instagram Business Account linked to this page token
-    const igResponse = await fetch(`https://graph.facebook.com/v20.0/me?fields=id,name,instagram_business_account&access_token=${token}`);
-    const igData = await igResponse.json();
-    console.log('Sync token IG data:', igData);
+    // Step 1: Get Facebook Pages linked to this User Token
+    const pagesResponse = await fetch(`https://graph.facebook.com/v20.0/me/accounts?access_token=${token}`);
+    const pagesData = await pagesResponse.json();
+    console.log('Pages data:', pagesData);
 
-    const igId = igData.instagram_business_account?.id || igData.id;
-    const name = igData.name || 'Silqueen';
-
-    if (!igId) {
-      return { success: false, error: 'Could not find Instagram account. Raw: ' + JSON.stringify(igData) };
+    if (!pagesData.data || pagesData.data.length === 0) {
+      return { success: false, error: 'No pages found. Raw: ' + JSON.stringify(pagesData) };
     }
 
+    // Step 2: Use the Page's own token to get the Instagram Business Account
+    const page = pagesData.data[0];
+    const pageToken = page.access_token;
+    const pageId = page.id;
+    const pageName = page.name;
+
+    const igResponse = await fetch(`https://graph.facebook.com/v20.0/${pageId}?fields=instagram_business_account&access_token=${pageToken}`);
+    const igData = await igResponse.json();
+    console.log('IG data:', igData);
+
+    const igId = igData.instagram_business_account?.id;
+    if (!igId) {
+      return { success: false, error: 'No Instagram Business Account linked to page. Raw: ' + JSON.stringify(igData) };
+    }
+
+    // Step 3: Save the Page Token (not User Token) to Supabase
     const { error } = await supabase
       .from('instagram_accounts')
       .upsert({
         instagram_business_id: igId,
-        access_token: token,
-        username: name,
+        access_token: pageToken,
+        username: pageName,
       }, { onConflict: 'instagram_business_id' });
 
     if (error) {
