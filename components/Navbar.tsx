@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, Zap, BarChart3, Settings, LogOut, Link2Off } from 'lucide-react';
-import { isAccountLinked, disconnectAccount } from '@/app/actions/accounts';
+import { isAccountLinked, disconnectAccount, saveInstagramAccount } from '@/app/actions/accounts';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -55,15 +55,18 @@ export default function Navbar() {
       return;
     }
 
-    window.FB.login((response: any) => {
+    window.FB.login(async (response: any) => {
       if (response.authResponse) {
-        console.log('Welcome! Fetching your information.... ');
         const accessToken = response.authResponse.accessToken;
-        console.log('Short-lived Access Token:', accessToken);
+        const result = await saveInstagramAccount(accessToken);
         
-        // In a real app, you would send this token to your backend to exchange 
-        // for a long-lived Page Access Token and save it to the database.
-        alert("Account connected successfully! Token received (check console).");
+        if (result.success) {
+          setIsLinked(true);
+          alert("Account connected successfully!");
+          router.refresh();
+        } else {
+          alert("Failed to save account: " + result.error);
+        }
       } else {
         console.log('User cancelled login or did not fully authorize.');
       }
