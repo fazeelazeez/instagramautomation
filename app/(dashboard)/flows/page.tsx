@@ -23,6 +23,8 @@ export default function FlowsPage() {
   const [newFlow, setNewFlow] = useState({ name: '', keyword: '', comment: '', dm: '' });
   const [flows, setFlows] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [successModal, setSuccessModal] = useState({ show: false, title: '', message: '' });
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Fetch flows on load
   useEffect(() => {
@@ -49,7 +51,8 @@ export default function FlowsPage() {
     if (!newFlow.name || !newFlow.keyword) return;
     
     let result;
-    if (editingFlowId) {
+    const isEditing = !!editingFlowId;
+    if (isEditing) {
       result = await updateFlow(editingFlowId, newFlow);
     } else {
       result = await createFlow(newFlow);
@@ -59,6 +62,13 @@ export default function FlowsPage() {
       const updatedFlows = await getFlows();
       setFlows(updatedFlows);
       closeModal();
+      setSuccessModal({
+        show: true,
+        title: isEditing ? 'Flow Updated!' : 'Flow Created!',
+        message: isEditing 
+          ? `Your changes to the "${newFlow.name}" flow have been successfully saved.`
+          : `The "${newFlow.name}" flow has been successfully created and is now active.`
+      });
     }
   };
 
@@ -75,10 +85,22 @@ export default function FlowsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    const result = await deleteFlow(id);
+  const triggerDelete = (id: string) => {
+    setDeleteConfirmId(id);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    const result = await deleteFlow(deleteConfirmId);
     if (result.success) {
-      setFlows(flows.filter(f => f.id !== id));
+      const deletedFlow = flows.find(f => f.id === deleteConfirmId);
+      setFlows(flows.filter(f => f.id !== deleteConfirmId));
+      setDeleteConfirmId(null);
+      setSuccessModal({
+        show: true,
+        title: 'Flow Deleted!',
+        message: `The "${deletedFlow?.name || 'automation flow'}" has been permanently deleted.`
+      });
     }
   };
 
@@ -223,7 +245,7 @@ export default function FlowsPage() {
                     {flow.is_active ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 text-emerald-500" />}
                   </button>
                   <button 
-                    onClick={() => handleDelete(flow.id)}
+                    onClick={() => triggerDelete(flow.id)}
                     className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-5 h-5" />
@@ -250,6 +272,82 @@ export default function FlowsPage() {
           <h3 className="text-lg font-semibold text-slate-900">No flows created yet</h3>
           <p className="text-slate-500 mb-6">Create your first automation to start saving time.</p>
           <Button className="px-8" onClick={() => setIsModalOpen(true)}>Get Started</Button>
+        </div>
+      )}
+
+      {/* Success Feedback Modal */}
+      {successModal.show && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setSuccessModal({ show: false, title: '', message: '' })}
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm relative z-10 overflow-hidden"
+          >
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-6 h-6 text-emerald-500" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">{successModal.title}</h3>
+              <p className="text-slate-500 text-xs leading-relaxed">
+                {successModal.message}
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 flex gap-2">
+              <Button 
+                onClick={() => setSuccessModal({ show: false, title: '', message: '' })}
+                className="w-full py-2.5 text-xs font-bold"
+              >
+                Okay, great!
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setDeleteConfirmId(null)}
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm relative z-10 overflow-hidden"
+          >
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-6 h-6 text-red-500 animate-bounce" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">Delete Flow?</h3>
+              <p className="text-slate-500 text-xs leading-relaxed">
+                Are you sure you want to delete this flow? This action cannot be undone and will stop auto-responses immediately.
+              </p>
+            </div>
+            <div className="flex border-t border-slate-100">
+              <button 
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 p-3.5 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors border-r border-slate-100"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDelete}
+                className="flex-1 p-3.5 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>
