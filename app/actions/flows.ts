@@ -16,7 +16,7 @@ export async function createFlow(formData: {
         {
           name: formData.name,
           trigger_type: 'comment', // Default for now
-          trigger_keyword: formData.keyword,
+          trigger_keyword: formData.keyword.trim().toUpperCase(),
           response_comment: formData.comment,
           response_dm: formData.dm,
           is_active: true,
@@ -88,7 +88,7 @@ export async function updateFlow(id: string, formData: {
       .from('automation_flows')
       .update({
         name: formData.name,
-        trigger_keyword: formData.keyword,
+        trigger_keyword: formData.keyword.trim().toUpperCase(),
         response_comment: formData.comment,
         response_dm: formData.dm,
       })
