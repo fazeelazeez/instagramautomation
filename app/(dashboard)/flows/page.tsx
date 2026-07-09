@@ -184,6 +184,8 @@ export default function FlowsPage() {
   const [successModal, setSuccessModal] = useState({ show: false, title: '', message: '' });
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'active' | 'paused' }>({ show: false, message: '', type: 'active' });
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -315,6 +317,12 @@ export default function FlowsPage() {
     }
   };
 
+  const showToast = (message: string, type: 'active' | 'paused') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ show: true, message, type });
+    toastTimerRef.current = setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
+  };
+
   const handleToggleGroup = async (group: any) => {
     setTogglingGroupId(group.flowGroupId);
     try {
@@ -325,6 +333,10 @@ export default function FlowsPage() {
       setFlowGroups(flowGroups.map(g =>
         g.flowGroupId === group.flowGroupId ? { ...g, is_active: nextStatus } : g
       ));
+      showToast(
+        nextStatus ? `"${group.name}" is now live` : `"${group.name}" paused`,
+        nextStatus ? 'active' : 'paused'
+      );
     } catch (e) {
       console.error(e);
     } finally {
@@ -380,6 +392,48 @@ export default function FlowsPage() {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto w-full min-h-screen">
+
+      {/* ── Toast Notification ── */}
+      <AnimatePresence>
+        {toast.show && (
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border backdrop-blur-md"
+            style={{
+              background: toast.type === 'active'
+                ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'
+                : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+              borderColor: toast.type === 'active' ? '#86efac' : '#e2e8f0',
+            }}
+          >
+            {toast.type === 'active' ? (
+              <div className="w-7 h-7 bg-emerald-500 rounded-full flex items-center justify-center shrink-0">
+                <Play className="w-3.5 h-3.5 text-white fill-white" />
+              </div>
+            ) : (
+              <div className="w-7 h-7 bg-slate-400 rounded-full flex items-center justify-center shrink-0">
+                <Pause className="w-3.5 h-3.5 text-white fill-white" />
+              </div>
+            )}
+            <div>
+              <p className={`text-xs font-extrabold uppercase tracking-wider ${toast.type === 'active' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                {toast.type === 'active' ? 'Flow Activated' : 'Flow Paused'}
+              </p>
+              <p className="text-sm font-semibold text-slate-800 mt-0.5">{toast.message}</p>
+            </div>
+            <button
+              onClick={() => setToast(t => ({ ...t, show: false }))}
+              className="ml-2 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-10 pb-6 border-b border-slate-100">
         <div>
