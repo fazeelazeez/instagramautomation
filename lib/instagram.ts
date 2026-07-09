@@ -1,5 +1,59 @@
+import { supabase } from './supabase';
+
 const PAGE_ACCESS_TOKEN = process.env.INSTAGRAM_PAGE_ACCESS_TOKEN;
 const INSTAGRAM_BUSINESS_ID = '17841462007877659'; // silqueendesigns
+
+// Helper to extract shortcode from Instagram URL
+function getShortcodeFromUrl(url: string): string | null {
+  if (!url) return null;
+  const match = url.match(/\/(?:p|reel|tv|share\/r)\/([A-Za-z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
+// Fetch latest media ID for the business account
+async function getLatestMediaId(): Promise<string | null> {
+  try {
+    const url = `https://graph.instagram.com/v25.0/${INSTAGRAM_BUSINESS_ID}/media?limit=1&access_token=${PAGE_ACCESS_TOKEN}`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.data?.[0]?.id || null;
+  } catch (e) {
+    console.error('Error fetching latest media ID:', e);
+    return null;
+  }
+}
+
+// Check if flow target matches comment media
+async function flowMatchesMedia(flow: any, media: any): Promise<boolean> {
+  try {
+    const parsed = JSON.parse(flow.name);
+    if (!parsed || typeof parsed !== 'object') {
+      // Legacy flow without JSON metadata defaults to 'all' posts
+      return true;
+    }
+    
+    const scope = parsed.scope || 'all';
+    if (scope === 'all') {
+      return true;
+    }
+    
+    if (scope === 'single') {
+      const flowShortcode = getShortcodeFromUrl(parsed.postId);
+      const commentShortcode = media.shortcode || getShortcodeFromUrl(media.permalink);
+      return !!flowShortcode && !!commentShortcode && flowShortcode === commentShortcode;
+    }
+    
+    if (scope === 'next') {
+      const latestId = await getLatestMediaId();
+      return !!latestId && latestId === media.id;
+    }
+  } catch (e) {
+    // If JSON parsing fails, treat as legacy flow
+    return true;
+  }
+  return false;
+}
 
 /**
  * Sends a Direct Message to an Instagram user triggered by their comment.
@@ -8,6 +62,49 @@ const INSTAGRAM_BUSINESS_ID = '17841462007877659'; // silqueendesigns
  * @param messageText - The text to send.
  */
 export async function sendInstagramDM(commentId: string, messageText: string) {
+  // Fetch comment details to validate post targeting scope
+  let commentInfo: any = null;
+  try {
+    const commentUrl = `https://graph.instagram.com/v25.0/${commentId}?fields=media{id,shortcode,permalink},text&access_token=${PAGE_ACCESS_TOKEN}`;
+    const response = await fetch(commentUrl);
+    if (response.ok) {
+      commentInfo = await response.json();
+    }
+  } catch (e) {
+    console.error('Error fetching comment info for DM scope verification:', e);
+  }
+
+  if (commentInfo && commentInfo.media) {
+    const commentText = commentInfo.text?.trim().toUpperCase() || '';
+    const media = commentInfo.media;
+    
+    // Fetch active flows for this keyword/trigger
+    const { data: activeFlows } = await supabase
+      .from('automation_flows')
+      .select('*')
+      .eq('is_active', true)
+      .or(`trigger_keyword.eq.${commentText},trigger_keyword.eq.*`);
+
+    if (activeFlows && activeFlows.length > 0) {
+      let matchedFlow: any = null;
+      for (const flow of activeFlows) {
+        if (await flowMatchesMedia(flow, media)) {
+          matchedFlow = flow;
+          break;
+        }
+      }
+      
+      if (!matchedFlow) {
+        console.log(`[sendInstagramDM] Skipping DM: comment on media ${media.shortcode || media.id} does not match targeted flows for keyword "${commentText}"`);
+        return { success: false, skipped: true };
+      }
+      
+      if (matchedFlow.response_dm) {
+        messageText = matchedFlow.response_dm;
+      }
+    }
+  }
+
   const url = `https://graph.instagram.com/v25.0/${INSTAGRAM_BUSINESS_ID}/messages`;
 
   let textToSend = messageText;
@@ -78,6 +175,49 @@ export async function sendInstagramDM(commentId: string, messageText: string) {
  * @param messageText - The text of the reply.
  */
 export async function replyToComment(commentId: string, messageText: string) {
+  // Fetch comment details to validate post targeting scope
+  let commentInfo: any = null;
+  try {
+    const commentUrl = `https://graph.instagram.com/v25.0/${commentId}?fields=media{id,shortcode,permalink},text&access_token=${PAGE_ACCESS_TOKEN}`;
+    const response = await fetch(commentUrl);
+    if (response.ok) {
+      commentInfo = await response.json();
+    }
+  } catch (e) {
+    console.error('Error fetching comment info for reply scope verification:', e);
+  }
+
+  if (commentInfo && commentInfo.media) {
+    const commentText = commentInfo.text?.trim().toUpperCase() || '';
+    const media = commentInfo.media;
+    
+    // Fetch active flows for this keyword/trigger
+    const { data: activeFlows } = await supabase
+      .from('automation_flows')
+      .select('*')
+      .eq('is_active', true)
+      .or(`trigger_keyword.eq.${commentText},trigger_keyword.eq.*`);
+
+    if (activeFlows && activeFlows.length > 0) {
+      let matchedFlow: any = null;
+      for (const flow of activeFlows) {
+        if (await flowMatchesMedia(flow, media)) {
+          matchedFlow = flow;
+          break;
+        }
+      }
+      
+      if (!matchedFlow) {
+        console.log(`[replyToComment] Skipping reply: comment on media ${media.shortcode || media.id} does not match targeted flows for keyword "${commentText}"`);
+        return { success: false, skipped: true };
+      }
+      
+      if (matchedFlow.response_comment) {
+        messageText = matchedFlow.response_comment;
+      }
+    }
+  }
+
   let replyText = messageText;
   
   if (messageText && messageText.includes('|||')) {
