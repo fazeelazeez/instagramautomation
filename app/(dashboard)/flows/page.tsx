@@ -26,7 +26,8 @@ import {
   Sparkles,
   Image as ImageIcon,
   LayoutGrid,
-  Bell
+  Bell,
+  Loader2
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui/core';
 
@@ -182,6 +183,7 @@ export default function FlowsPage() {
 
   const [successModal, setSuccessModal] = useState({ show: false, title: '', message: '' });
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -314,13 +316,20 @@ export default function FlowsPage() {
   };
 
   const handleToggleGroup = async (group: any) => {
-    const nextStatus = !group.is_active;
-    for (const dbFlow of group.dbFlows) {
-      await toggleFlowActive(dbFlow.id, !nextStatus);
+    setTogglingGroupId(group.flowGroupId);
+    try {
+      const nextStatus = !group.is_active;
+      for (const dbFlow of group.dbFlows) {
+        await toggleFlowActive(dbFlow.id, !nextStatus);
+      }
+      setFlowGroups(flowGroups.map(g =>
+        g.flowGroupId === group.flowGroupId ? { ...g, is_active: nextStatus } : g
+      ));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTogglingGroupId(null);
     }
-    setFlowGroups(flowGroups.map(g =>
-      g.flowGroupId === group.flowGroupId ? { ...g, is_active: nextStatus } : g
-    ));
   };
 
   const triggerDeleteGroup = (groupId: string) => setDeleteConfirmId(groupId);
@@ -462,6 +471,7 @@ export default function FlowsPage() {
             onDelete={triggerDeleteGroup}
             emptyLabel="No all-post automations"
             onAdd={() => startNewFlow('all')}
+            togglingGroupId={togglingGroupId}
           />
 
           {/* ── Upcoming New Post Section ── */}
@@ -477,6 +487,7 @@ export default function FlowsPage() {
             onDelete={triggerDeleteGroup}
             emptyLabel="No upcoming post automations"
             onAdd={() => startNewFlow('next')}
+            togglingGroupId={togglingGroupId}
           />
 
           {/* ── Single Post Section ── */}
@@ -493,6 +504,7 @@ export default function FlowsPage() {
             emptyLabel="No single-post automations"
             onAdd={() => startNewFlow('single')}
             showPostLink
+            togglingGroupId={togglingGroupId}
           />
 
         </div>
@@ -1080,7 +1092,7 @@ function ReviewRow({ label, children }: { label: string; children: React.ReactNo
 
 function FlowSection({
   title, description, icon: Icon, iconBg, iconColor,
-  flows, onEdit, onToggle, onDelete, emptyLabel, onAdd, showPostLink
+  flows, onEdit, onToggle, onDelete, emptyLabel, onAdd, showPostLink, togglingGroupId
 }: {
   title: string;
   description: string;
@@ -1094,6 +1106,7 @@ function FlowSection({
   emptyLabel: string;
   onAdd: () => void;
   showPostLink?: boolean;
+  togglingGroupId: string | null;
 }) {
   return (
     <section>
@@ -1142,6 +1155,7 @@ function FlowSection({
               onToggle={onToggle}
               onDelete={onDelete}
               showPostLink={showPostLink}
+              isToggling={togglingGroupId === group.flowGroupId}
             />
           ))}
         </div>
@@ -1150,12 +1164,13 @@ function FlowSection({
   );
 }
 
-function FlowCard({ group, onEdit, onToggle, onDelete, showPostLink }: {
+function FlowCard({ group, onEdit, onToggle, onDelete, showPostLink, isToggling }: {
   group: any;
   onEdit: (g: any) => void;
   onToggle: (g: any) => void;
   onDelete: (id: string) => void;
   showPostLink?: boolean;
+  isToggling?: boolean;
 }) {
   return (
     <motion.div
@@ -1168,10 +1183,23 @@ function FlowCard({ group, onEdit, onToggle, onDelete, showPostLink }: {
             {/* Name + status */}
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-sm font-extrabold text-slate-900">{group.name}</h3>
-              <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
-                group.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+              <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 ${
+                group.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100/50' : 'bg-slate-100 text-slate-500'
               }`}>
-                {group.is_active ? '● Live' : '○ Paused'}
+                {group.is_active ? (
+                  <>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    Live
+                  </>
+                ) : (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                    Paused
+                  </>
+                )}
               </span>
             </div>
 
@@ -1228,10 +1256,17 @@ function FlowCard({ group, onEdit, onToggle, onDelete, showPostLink }: {
           <div className="flex items-center gap-2 shrink-0 self-start">
             <button
               onClick={() => onToggle(group)}
-              className="p-2.5 hover:bg-slate-50 rounded-xl text-slate-400 border border-slate-100 transition-colors"
+              disabled={isToggling}
+              className="p-2.5 hover:bg-slate-50 rounded-xl text-slate-400 border border-slate-100 transition-colors disabled:opacity-50 flex items-center justify-center min-w-[38px] min-h-[38px]"
               title={group.is_active ? 'Pause' : 'Activate'}
             >
-              {group.is_active ? <Pause className="w-4 h-4 text-slate-600" /> : <Play className="w-4 h-4 text-emerald-500" />}
+              {isToggling ? (
+                <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+              ) : group.is_active ? (
+                <Pause className="w-4 h-4 text-slate-600" />
+              ) : (
+                <Play className="w-4 h-4 text-emerald-500" />
+              )}
             </button>
             <button
               onClick={() => onEdit(group)}
