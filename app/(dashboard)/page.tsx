@@ -1,19 +1,24 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   MessageCircle, 
   Send, 
   Zap, 
   Shield, 
-  BarChart3, 
-  Settings,
   Plus,
-  Instagram
+  ChevronRight,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
+import Link from 'next/link';
+import { getFlows } from '@/app/actions/flows';
 
 export default function Home() {
+  const [flows, setFlows] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const stats = [
     { label: 'Total Comments', value: '0', icon: MessageCircle, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'DMs Sent', value: '0', icon: Send, color: 'text-purple-600', bg: 'bg-purple-50' },
@@ -23,21 +28,76 @@ export default function Home() {
 
   const recentActivity: any[] = [];
 
+  useEffect(() => {
+    async function loadFlows() {
+      try {
+        const data = await getFlows();
+        
+        // Group by flowGroupId to count them correctly
+        const groups: { [key: string]: any } = {};
+        
+        data.forEach((flow: any) => {
+          let nameMeta = flow.name;
+          let scope = 'all';
+          let flowGroupId = flow.id;
+          
+          try {
+            const parsed = JSON.parse(flow.name);
+            if (parsed && typeof parsed === 'object' && parsed.flowGroupId) {
+              nameMeta = parsed.name || 'Untitled Automation';
+              scope = parsed.scope || 'all';
+              flowGroupId = parsed.flowGroupId;
+            }
+          } catch (e) {}
+
+          if (!groups[flowGroupId]) {
+            groups[flowGroupId] = {
+              name: nameMeta,
+              scope,
+              keywords: [],
+              is_active: false,
+              lastRun: 'Never',
+              hits: 0
+            };
+          }
+          groups[flowGroupId].keywords.push(flow.trigger_keyword);
+          if (flow.is_active) {
+            groups[flowGroupId].is_active = true;
+          }
+        });
+
+        setFlows(Object.values(groups));
+      } catch (err) {
+        console.error('Error fetching dashboard flows:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadFlows();
+  }, []);
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Main Content */}
-
       <main className="flex-grow p-6 md:p-10 max-w-7xl mx-auto w-full">
         {/* Welcome Header */}
-        <div className="mb-10">
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-bold text-slate-900"
-          >
-            Welcome back, Creator
-          </motion.h1>
-          <p className="text-slate-500 mt-2">Manage your Instagram engagement and automation flows.</p>
+        <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <motion.h1 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-3xl font-bold text-slate-900"
+            >
+              Welcome back, Creator
+            </motion.h1>
+            <p className="text-slate-500 mt-2">Manage your Instagram engagement and automation flows.</p>
+          </div>
+          
+          <Link href="/flows">
+            <button className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-2xl text-xs shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]">
+              <Sparkles className="w-4 h-4 text-yellow-300" /> Go To Automations
+            </button>
+          </Link>
         </div>
 
         {/* Stats Grid */}
@@ -67,37 +127,65 @@ export default function Home() {
           <div className="lg:col-span-2 space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold text-slate-900">Active Automations</h2>
-              <button className="flex items-center gap-2 text-sm font-semibold text-primary hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
-                <Plus className="w-4 h-4" /> New Flow
-              </button>
+              <Link href="/flows" className="flex items-center gap-2 text-sm font-semibold text-primary hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
+                <Plus className="w-4 h-4" /> Configure
+              </Link>
             </div>
             
-            {[
-              { name: 'Keyword "PRICE" → DM', status: 'Paused', hits: 0, lastRun: 'Never' },
-            ].map((flow) => (
-              <div key={flow.name} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-slate-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-900">{flow.name}</h3>
-                    <p className="text-xs text-slate-400">Last triggered {flow.lastRun}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-6 text-sm">
-                  <div className="text-right hidden sm:block">
-                    <p className="font-medium text-slate-900">{flow.hits} hits</p>
-                    <p className="text-xs text-slate-400">Total volume</p>
-                  </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                    flow.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {flow.status}
-                  </span>
-                </div>
+            {isLoading ? (
+              <div className="text-center py-10 text-slate-400 bg-white rounded-2xl border border-slate-100 p-6">
+                Loading automations...
               </div>
-            ))}
+            ) : flows.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-2xl border border-slate-100 p-8 shadow-sm">
+                <Zap className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-slate-700">No active automations</p>
+                <p className="text-slate-400 text-xs mt-1 mb-4">Set up comment replies for Reels or specific posts to get started.</p>
+                <Link href="/flows">
+                  <button className="px-6 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-md hover:bg-blue-700 transition-colors">
+                    Create Reply Flow
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {flows.map((flow) => (
+                  <div key={flow.name} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center">
+                        <Zap className="w-5 h-5 text-amber-500" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-slate-900 text-sm">{flow.name}</h3>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase ${
+                            flow.scope === 'all' 
+                              ? 'bg-purple-100 text-purple-700' 
+                              : flow.scope === 'next' 
+                                ? 'bg-emerald-100 text-emerald-700' 
+                                : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {flow.scope === 'all' ? 'All' : flow.scope === 'next' ? 'Next' : 'Single'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">Keywords: {flow.keywords.join(', ')}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="text-right hidden sm:block">
+                        <p className="font-medium text-slate-950 text-xs">{flow.hits} hits</p>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Total volume</p>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        flow.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {flow.is_active ? 'Active' : 'Paused'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Quick Actions / Recent Logs */}
@@ -122,9 +210,9 @@ export default function Home() {
                   ))
                 )}
               </div>
-              <button className="w-full p-3 text-sm font-medium text-primary hover:bg-blue-50 border-t border-slate-50 transition-colors">
+              <Link href="/analytics" className="block text-center w-full p-3 text-sm font-medium text-primary hover:bg-blue-50 border-t border-slate-50 transition-colors">
                 View Full Logs
-              </button>
+              </Link>
             </div>
           </div>
         </div>
