@@ -2,6 +2,22 @@ const PAGE_ACCESS_TOKEN = process.env.INSTAGRAM_PAGE_ACCESS_TOKEN;
 const INSTAGRAM_BUSINESS_ID = '17841462007877659'; // silqueendesigns
 
 /**
+ * Fetches the shortcode for a given Instagram Media ID.
+ */
+export async function getMediaShortcode(mediaId: string): Promise<string | null> {
+  if (!mediaId) return null;
+  const url = `https://graph.instagram.com/v25.0/${mediaId}?fields=shortcode&access_token=${PAGE_ACCESS_TOKEN}`;
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data && data.shortcode) return data.shortcode;
+  } catch (e) {
+    console.error('Failed to fetch media shortcode:', e);
+  }
+  return null;
+}
+
+/**
  * Sends a Direct Message to an Instagram user triggered by their comment.
  * Using comment_id as recipient bypasses the 24-hour window restriction.
  * @param commentId - The ID of the comment that triggered this DM.

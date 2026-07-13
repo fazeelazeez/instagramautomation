@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendInstagramDM, replyToComment } from '@/lib/instagram';
+import { sendInstagramDM, replyToComment, getMediaShortcode } from '@/lib/instagram';
 import { supabase } from '@/lib/supabase';
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'silqueen_automation_2026';
@@ -102,13 +102,11 @@ async function processWebhook(body: any) {
 
       let flow: any = null;
       const mediaId = commentData.media?.id;
+      let mediaShortcode: string | null = null;
 
       if (matchedFlows.length > 0) {
         // We might have multiple flows for the same keyword.
         // We parse their JSON names to find their scope and prioritize:
-        // Priority 1: 'single' scope matching the exact mediaId
-        // Priority 2: 'next' scope
-        // Priority 3: 'all' scope
         const parsedFlows = matchedFlows.map(f => {
           let parsedMeta: any = { scope: 'all', postId: null };
           try {
@@ -117,8 +115,18 @@ async function processWebhook(body: any) {
           return { ...f, _meta: parsedMeta };
         });
 
-        // Try exact match first
-        flow = parsedFlows.find(f => f._meta.scope === 'single' && f._meta.postId === mediaId);
+        // Priority 1: 'single' scope matching the exact mediaId
+        const singleFlows = parsedFlows.filter(f => f._meta.scope === 'single' && f._meta.postId);
+        if (singleFlows.length > 0 && mediaId) {
+          mediaShortcode = await getMediaShortcode(mediaId);
+          if (mediaShortcode) {
+            flow = singleFlows.find(f => {
+              // The user inputs a full URL like https://www.instagram.com/p/CXYZ/
+              // We check if the URL contains the shortcode
+              return typeof f._meta.postId === 'string' && f._meta.postId.includes(mediaShortcode!);
+            });
+          }
+        }
 
         // Fallback to next post or all posts
         if (!flow) {
