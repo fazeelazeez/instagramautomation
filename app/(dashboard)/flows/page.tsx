@@ -388,6 +388,19 @@ export default function FlowsPage() {
   const upcomingFlows = flowGroups.filter(g => g.scope === 'next');
   const singlePostFlows = flowGroups.filter(g => g.scope === 'single');
 
+  // Detect duplicate keywords across active flows (breaks webhook .maybeSingle())
+  const activeFlows = flowGroups.filter(g => g.is_active);
+  const keywordCount: Record<string, string[]> = {};
+  activeFlows.forEach(g => {
+    (g.keywords as string[]).forEach((kw: string) => {
+      if (!keywordCount[kw]) keywordCount[kw] = [];
+      keywordCount[kw].push(g.name);
+    });
+  });
+  const conflictKeywords = Object.entries(keywordCount)
+    .filter(([, names]) => names.length > 1)
+    .map(([kw]) => kw);
+
   const selectedScopeConfig = getScopeConfig(selectedScope);
 
   return (
@@ -433,6 +446,27 @@ export default function FlowsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Keyword Conflict Warning ── */}
+      {conflictKeywords.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4"
+        >
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-extrabold text-red-700">Keyword conflict — automations won't trigger!</p>
+            <p className="text-xs text-red-600 mt-1">
+              These keywords appear in <strong>multiple active flows</strong>, which breaks the trigger system:{' '}
+              <span className="font-mono font-bold">{conflictKeywords.join(', ')}</span>
+            </p>
+            <p className="text-xs text-red-500 mt-1">
+              ✦ Fix: Each keyword must exist in only <strong>one active flow</strong> at a time. Pause or edit one of the conflicting flows to remove the duplicate keyword.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-10 pb-6 border-b border-slate-100">
