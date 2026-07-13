@@ -87,18 +87,45 @@ async function processWebhook(body: any) {
         // Don't return — continue processing even if this check fails
       }
 
-      // Find matching automation flow
-      let flow: any = null;
+      // Find matching automation flows
+      let matchedFlows: any[] = [];
       try {
         const { data } = await supabase
           .from('automation_flows')
           .select('*')
           .eq('trigger_keyword', commentText)
-          .eq('is_active', true)
-          .maybeSingle();
-        flow = data;
+          .eq('is_active', true);
+        if (data) matchedFlows = data;
       } catch (flowErr) {
         console.error('Flow lookup failed:', flowErr);
+      }
+
+      let flow: any = null;
+      const mediaId = commentData.media?.id;
+
+      if (matchedFlows.length > 0) {
+        // We might have multiple flows for the same keyword.
+        // We parse their JSON names to find their scope and prioritize:
+        // Priority 1: 'single' scope matching the exact mediaId
+        // Priority 2: 'next' scope
+        // Priority 3: 'all' scope
+        const parsedFlows = matchedFlows.map(f => {
+          let parsedMeta: any = { scope: 'all', postId: null };
+          try {
+            if (f.name.startsWith('{')) parsedMeta = JSON.parse(f.name);
+          } catch (e) {}
+          return { ...f, _meta: parsedMeta };
+        });
+
+        // Try exact match first
+        flow = parsedFlows.find(f => f._meta.scope === 'single' && f._meta.postId === mediaId);
+
+        // Fallback to next post or all posts
+        if (!flow) {
+          flow = parsedFlows.find(f => f._meta.scope === 'next') || 
+                 parsedFlows.find(f => f._meta.scope === 'all') || 
+                 parsedFlows[0]; // Ultimate fallback
+        }
       }
 
       if (!flow) {

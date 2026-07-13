@@ -388,20 +388,8 @@ export default function FlowsPage() {
   const upcomingFlows = flowGroups.filter(g => g.scope === 'next');
   const singlePostFlows = flowGroups.filter(g => g.scope === 'single');
 
-  // Detect duplicate keywords across active flows (breaks webhook .maybeSingle())
-  const activeFlows = flowGroups.filter(g => g.is_active);
-  const keywordCount: Record<string, string[]> = {};
-  activeFlows.forEach(g => {
-    (g.keywords as string[]).forEach((kw: string) => {
-      if (!keywordCount[kw]) keywordCount[kw] = [];
-      keywordCount[kw].push(g.name);
-    });
-  });
-  const conflictKeywords = Object.entries(keywordCount)
-    .filter(([, names]) => names.length > 1)
-    .map(([kw]) => kw);
-
   const selectedScopeConfig = getScopeConfig(selectedScope);
+  const conflictKeywords: string[] = []; // Disabled: We now support multiple flows with the same keyword
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto w-full min-h-screen">
