@@ -16,6 +16,7 @@ import {
   Instagram,
   FileText,
   UserCheck,
+  Copy,
   Clock,
   ArrowRight,
   Link as LinkIcon,
@@ -244,6 +245,29 @@ export default function FlowsPage() {
     setSelectedScope(group.scope);
     setInstagramLink(group.postId || '');
     setFlowName(group.name);
+    const isAnyWord = group.keywords.includes('*') || group.keywords.includes('ANY_WORD');
+    setMatchType(isAnyWord ? 'any' : 'specific');
+    setKeywordInput(isAnyWord ? '' : group.keywords.join(', '));
+    setEnableCommentReply(group.commentTemplates.length > 0);
+    setCommentTemplates(group.commentTemplates.length > 0 ? group.commentTemplates : ['Check your DMs! 📬']);
+    setReplyEveryTime(false);
+    setIgnoreOwnComments(true);
+    setEnableDM(!!group.dmText);
+    setGreetingFormat(group.greetingFormat || 'quick_reply');
+    setDMText(group.dmText || '');
+    setQuickReplyLabel(group.quickReplyLabel || 'Show me more');
+    setRequireFollow(group.requireFollow || false);
+    setFollowUp(group.followUp || false);
+    setFollowUpText(group.followUpText || "Hey, just checking in to see if you got a chance to check the link? Let me know if you have any questions! 💬");
+    setWizardStep(1);
+    setIsWizardOpen(true);
+  };
+
+  const startCloneFlow = (group: any) => {
+    setEditingGroupId(null);
+    setSelectedScope(group.scope);
+    setInstagramLink('');
+    setFlowName(`${group.name} (Copy)`);
     const isAnyWord = group.keywords.includes('*') || group.keywords.includes('ANY_WORD');
     setMatchType(isAnyWord ? 'any' : 'specific');
     setKeywordInput(isAnyWord ? '' : group.keywords.join(', '));
@@ -578,6 +602,7 @@ export default function FlowsPage() {
             iconColor="text-purple-600"
             flows={allPostsFlows}
             onEdit={startEditFlow}
+            onClone={startCloneFlow}
             onToggle={handleToggleGroup}
             onDelete={triggerDeleteGroup}
             emptyLabel="No all-post automations"
@@ -594,6 +619,7 @@ export default function FlowsPage() {
             iconColor="text-emerald-600"
             flows={upcomingFlows}
             onEdit={startEditFlow}
+            onClone={startCloneFlow}
             onToggle={handleToggleGroup}
             onDelete={triggerDeleteGroup}
             emptyLabel="No upcoming post automations"
@@ -610,6 +636,7 @@ export default function FlowsPage() {
             iconColor="text-blue-600"
             flows={singlePostFlows}
             onEdit={startEditFlow}
+            onClone={startCloneFlow}
             onToggle={handleToggleGroup}
             onDelete={triggerDeleteGroup}
             emptyLabel={searchQuery ? "No matching flows found" : "No single-post automations"}
@@ -1230,8 +1257,14 @@ function ReviewRow({ label, children }: { label: string; children: React.ReactNo
 }
 
 function FlowSection({
-  title, description, icon: Icon, iconBg, iconColor,
-  flows, onEdit, onToggle, onDelete, emptyLabel, onAdd, showPostLink, togglingGroupId
+  title, description, icon: Icon,  iconBg,
+  iconColor,
+  flows,
+  onEdit,
+  onClone,
+  onToggle,
+  onDelete,
+  emptyLabel, onAdd, showPostLink, togglingGroupId
 }: {
   title: string;
   description: string;
@@ -1239,8 +1272,9 @@ function FlowSection({
   iconBg: string;
   iconColor: string;
   flows: any[];
-  onEdit: (g: any) => void;
-  onToggle: (g: any) => void;
+  onEdit: (group: any) => void;
+  onClone: (group: any) => void;
+  onToggle: (group: any) => void;
   onDelete: (id: string) => void;
   emptyLabel: string;
   onAdd: () => void;
@@ -1291,6 +1325,7 @@ function FlowSection({
               key={group.flowGroupId}
               group={group}
               onEdit={onEdit}
+              onClone={onClone}
               onToggle={onToggle}
               onDelete={onDelete}
               showPostLink={showPostLink}
@@ -1303,9 +1338,10 @@ function FlowSection({
   );
 }
 
-function FlowCard({ group, onEdit, onToggle, onDelete, showPostLink, isToggling }: {
+function FlowCard({ group, onEdit, onClone, onToggle, onDelete, showPostLink, isToggling }: {
   group: any;
   onEdit: (g: any) => void;
+  onClone: (g: any) => void;
   onToggle: (g: any) => void;
   onDelete: (id: string) => void;
   showPostLink?: boolean;
@@ -1408,8 +1444,15 @@ function FlowCard({ group, onEdit, onToggle, onDelete, showPostLink, isToggling 
               )}
             </button>
             <button
+              onClick={() => onClone(group)}
+              className="p-2.5 hover:bg-slate-50 rounded-xl text-slate-400 border border-slate-100 transition-colors"
+              title="Clone Flow"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => onEdit(group)}
-              className="p-2.5 hover:bg-blue-50 rounded-xl text-slate-400 hover:text-primary border border-slate-100 transition-colors"
+              className="p-2.5 hover:bg-slate-50 rounded-xl text-slate-400 border border-slate-100 transition-colors"
               title="Edit"
             >
               <ChevronRight className="w-4 h-4" />
