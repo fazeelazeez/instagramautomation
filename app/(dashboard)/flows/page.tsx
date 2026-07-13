@@ -22,6 +22,8 @@ import {
   Activity,
   AlertCircle,
   ChevronDown,
+  ChevronLeft,
+  Search,
   Globe,
   Sparkles,
   Image as ImageIcon,
@@ -186,6 +188,13 @@ export default function FlowsPage() {
   const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'active' | 'paused' }>({ show: false, message: '', type: 'active' });
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   useEffect(() => {
     async function loadData() {
@@ -383,10 +392,22 @@ export default function FlowsPage() {
     if (commentTemplates.length > 1) setCommentTemplates(commentTemplates.filter((_, i) => i !== idx));
   };
 
+  // Search & Filtering
+  const filteredGroups = flowGroups.filter(g => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const matchName = g.name.toLowerCase().includes(q);
+    const matchLink = g.postId && g.postId.toLowerCase().includes(q);
+    return matchName || matchLink;
+  });
+
   // Group flows by scope for sectioned display
-  const allPostsFlows = flowGroups.filter(g => g.scope === 'all');
-  const upcomingFlows = flowGroups.filter(g => g.scope === 'next');
-  const singlePostFlows = flowGroups.filter(g => g.scope === 'single');
+  const allPostsFlows = filteredGroups.filter(g => g.scope === 'all');
+  const upcomingFlows = filteredGroups.filter(g => g.scope === 'next');
+  
+  const allSinglePostFlows = filteredGroups.filter(g => g.scope === 'single');
+  const totalSinglePages = Math.max(1, Math.ceil(allSinglePostFlows.length / 10));
+  const singlePostFlows = allSinglePostFlows.slice((currentPage - 1) * 10, currentPage * 10);
 
   const selectedScopeConfig = getScopeConfig(selectedScope);
   const conflictKeywords: string[] = []; // Disabled: We now support multiple flows with the same keyword
@@ -465,12 +486,25 @@ export default function FlowsPage() {
           <p className="text-slate-500 mt-1">Automate comment replies and DMs based on keywords and post targeting.</p>
         </div>
 
-        {/* Create Flow button with dropdown */}
-        <div className="relative shrink-0" ref={dropdownRef}>
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center justify-center gap-2 px-6 py-3.5 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99] transition-all text-sm"
-          >
+        {/* Search & Actions */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Search by title or link..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-400"
+            />
+          </div>
+
+          {/* Create Flow button with dropdown */}
+          <div className="relative shrink-0 w-full sm:w-auto" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99] transition-all text-sm"
+            >
             <Plus className="w-5 h-5" /> Create Flow
             <ChevronDown className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -511,6 +545,7 @@ export default function FlowsPage() {
           </AnimatePresence>
         </div>
       </div>
+    </div>
 
       {/* Sectioned Flow Lists */}
       {isLoadingFlows ? (
@@ -577,11 +612,39 @@ export default function FlowsPage() {
             onEdit={startEditFlow}
             onToggle={handleToggleGroup}
             onDelete={triggerDeleteGroup}
-            emptyLabel="No single-post automations"
+            emptyLabel={searchQuery ? "No matching flows found" : "No single-post automations"}
             onAdd={() => startNewFlow('single')}
             showPostLink
             togglingGroupId={togglingGroupId}
           />
+
+          {/* Pagination Controls */}
+          {allSinglePostFlows.length > 10 && (
+            <div className="flex items-center justify-between mt-6 px-4 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
+              <p className="text-sm text-slate-500">
+                Showing <span className="font-semibold text-slate-700">{(currentPage - 1) * 10 + 1}</span> to <span className="font-semibold text-slate-700">{Math.min(currentPage * 10, allSinglePostFlows.length)}</span> of <span className="font-semibold text-slate-700">{allSinglePostFlows.length}</span> single post flows
+              </p>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-xl hover:bg-slate-50 text-slate-600 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <div className="px-3 py-1 bg-slate-50 rounded-lg text-sm font-semibold text-slate-700 border border-slate-100">
+                  {currentPage} / {totalSinglePages}
+                </div>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.min(totalSinglePages, p + 1))}
+                  disabled={currentPage === totalSinglePages}
+                  className="p-2 rounded-xl hover:bg-slate-50 text-slate-600 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
 
         </div>
       )}
