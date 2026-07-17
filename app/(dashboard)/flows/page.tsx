@@ -996,11 +996,11 @@ export default function FlowsPage() {
                             placeholder="Write your automated message here..."
                             className="w-full p-4 bg-white border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 text-slate-700 text-sm h-32 resize-none"
                             value={dmText}
-                            onChange={(e) => setDMText(e.target.value.substring(0, 640))}
+                            onChange={(e) => setDMText(e.target.value.substring(0, 1000))}
                           />
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CHARACTER COUNT</span>
-                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{dmText.length}/640</span>
+                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{dmText.length}/1000</span>
                           </div>
 
                           {greetingFormat === 'quick_reply' && (
