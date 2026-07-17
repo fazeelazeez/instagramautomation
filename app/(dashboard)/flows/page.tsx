@@ -310,14 +310,14 @@ export default function FlowsPage() {
     });
 
     const joinedComments = enableCommentReply ? commentTemplates.join('|||') : '';
-    const dmConfig = JSON.stringify({
+    const dmConfig = enableDM ? JSON.stringify({
       text: dmText,
       greetingFormat,
       quickReplyLabel,
       requireFollow,
       followUp,
       followUpText: followUp ? followUpText : ''
-    });
+    }) : '';
 
     if (editingGroupId) {
       const groupToDelete = flowGroups.find(g => g.flowGroupId === editingGroupId);
