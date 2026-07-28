@@ -14,11 +14,14 @@ import {
   Clock,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Calendar,
+  ChevronDown
 } from 'lucide-react';
 import Link from 'next/link';
 import { getFlows } from '@/app/actions/flows';
 import { getRecentLogs } from '@/app/actions/logs';
+import { Preset, PRESET_LABELS, getDateRange } from '@/lib/dates';
 
 export default function Home() {
   const [flows, setFlows] = useState<any[]>([]);
@@ -34,10 +37,14 @@ export default function Home() {
     automationHits: 0,
   });
 
+  const [preset, setPreset] = useState<Preset>('this_month');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
   useEffect(() => {
-    async function loadAll() {
+    async function loadFlowsData() {
       try {
-        // ── Load flows ──────────────────────────────────────────
         const data = await getFlows();
         const groups: { [key: string]: any } = {};
         data.forEach((flow: any) => {
@@ -59,9 +66,19 @@ export default function Home() {
           if (flow.is_active) groups[flowGroupId].is_active = true;
         });
         setFlows(Object.values(groups));
+      } catch (err) {
+        console.error('Dashboard load flows error:', err);
+      }
+    }
+    loadFlowsData();
+  }, []);
 
-        // ── Load logs for stats ─────────────────────────────────
-        const logs = await getRecentLogs({ limit: 200 });
+  useEffect(() => {
+    async function loadLogsData() {
+      setIsLoading(true);
+      try {
+        const { from, to } = getDateRange(preset, customFrom, customTo);
+        const logs = await getRecentLogs({ from, to, limit: 1000 });
 
         if (logs) {
           const hits = logs.filter((l: any) => l.status === 'processed').length;
@@ -77,7 +94,7 @@ export default function Home() {
           setRecentLogs(userActivityLogs.slice(0, 6));
         }
       } catch (err) {
-        console.error('Dashboard load error:', err);
+        console.error('Dashboard load logs error:', err);
       } finally {
         setIsLoading(false);
       }
@@ -130,11 +147,72 @@ export default function Home() {
             </motion.h1>
             <p className="text-slate-500 mt-2">Manage your Instagram engagement and automation flows.</p>
           </div>
-          <Link href="/flows">
-            <button className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-2xl text-xs shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]">
-              <Sparkles className="w-4 h-4 text-yellow-300" /> Go To Automations
-            </button>
-          </Link>
+          <div className="flex items-center gap-3 relative">
+            <div className="relative">
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-xl shadow-sm text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <Calendar className="w-4 h-4 text-slate-400" />
+                {PRESET_LABELS[preset]}
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-100 shadow-xl rounded-xl z-50 py-1 overflow-hidden">
+                  {(Object.entries(PRESET_LABELS) as [Preset, string][]).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setPreset(key);
+                        if (key !== 'custom') setDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${
+                        preset === key ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+
+                  {preset === 'custom' && (
+                    <div className="p-4 bg-slate-50 border-t border-slate-100 space-y-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">From</label>
+                        <input
+                          type="date"
+                          value={customFrom}
+                          onChange={(e) => setCustomFrom(e.target.value)}
+                          className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">To</label>
+                        <input
+                          type="date"
+                          value={customTo}
+                          onChange={(e) => setCustomTo(e.target.value)}
+                          className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white"
+                        />
+                      </div>
+                      <button
+                        onClick={() => setDropdownOpen(false)}
+                        className="w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
+                      >
+                        Apply Date
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <Link href="/flows">
+              <button className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-2xl text-xs shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]">
+                <Sparkles className="w-4 h-4 text-yellow-300" /> Go To Automations
+              </button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Grid */}

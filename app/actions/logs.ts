@@ -5,14 +5,20 @@ import { supabase } from '@/lib/supabase';
 /**
  * Fetches recent logs for the dashboard overview.
  */
-export async function getRecentLogs(limit: number = 200) {
+export async function getRecentLogs({ from, to, limit = 500 }: { from?: string; to?: string; limit?: number } = {}) {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('automation_logs')
       .select('*')
       .neq('action_taken', 'RAW_WEBHOOK_RECEIVED')
       .order('created_at', { ascending: false })
       .limit(limit);
+
+    if (from && to) {
+      query = query.gte('created_at', from).lte('created_at', to);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Failed to fetch recent logs:', error);
