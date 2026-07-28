@@ -12,7 +12,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { getFlows } from '@/app/actions/flows';
@@ -22,6 +24,8 @@ export default function Home() {
   const [flows, setFlows] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [activityPage, setActivityPage] = useState(1);
+  const activityPageSize = 5;
   const [stats, setStats] = useState({
     totalComments: 0,
     dmsSent: 0,
@@ -258,7 +262,7 @@ export default function Home() {
                     <p className="text-sm text-slate-400">No recent activity</p>
                   </div>
                 ) : (
-                  recentLogs.map((log, idx) => (
+                  recentLogs.slice((activityPage - 1) * activityPageSize, activityPage * activityPageSize).map((log, idx) => (
                     <div key={log.id || idx} className="flex items-start gap-3 p-4 hover:bg-slate-50/30 transition-colors">
                       <div className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-extrabold text-slate-500 uppercase shrink-0 mt-0.5">
                         {(log.sender_handle || '?')[0]}
@@ -283,6 +287,31 @@ export default function Home() {
                   ))
                 )}
               </div>
+
+              {recentLogs.length > activityPageSize && (
+                <div className="flex items-center justify-between px-4 py-2.5 border-t border-slate-100 bg-slate-50/50">
+                  <button
+                    onClick={() => setActivityPage((p) => Math.max(1, p - 1))}
+                    disabled={activityPage === 1}
+                    className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Previous"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    {activityPage} / {Math.ceil(recentLogs.length / activityPageSize)}
+                  </span>
+                  <button
+                    onClick={() => setActivityPage((p) => (p * activityPageSize < recentLogs.length ? p + 1 : p))}
+                    disabled={activityPage * activityPageSize >= recentLogs.length}
+                    className="p-1 text-slate-500 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Next"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
               <Link href="/analytics" className="block text-center w-full p-3 text-sm font-medium text-primary hover:bg-blue-50 border-t border-slate-50 transition-colors">
                 View Full Logs →
               </Link>

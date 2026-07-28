@@ -9,6 +9,8 @@ import {
   Zap,
   Calendar,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   RefreshCw,
   X,
   CheckCircle2,
@@ -71,27 +73,31 @@ export default function AnalyticsPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
+  const [totalCount, setTotalCount] = useState(0);
+
   const fetchLogs = useCallback(async () => {
     setIsLoading(true);
     const { from, to } = getDateRange(preset, customFrom, customTo);
 
-    const { data, error } = await supabase
+    const { data, count, error } = await supabase
       .from('automation_logs')
-      .select('*, automation_flows(*)')
+      .select('*, automation_flows(*)', { count: 'exact' })
+      .neq('action_taken', 'RAW_WEBHOOK_RECEIVED')
+      .neq('action_taken', 'dm_sent_to_user')
       .gte('created_at', from)
       .lte('created_at', to)
       .order('created_at', { ascending: false })
-      .limit(200);
+      .range((page - 1) * pageSize, page * pageSize - 1);
 
     if (!error && data) {
-      // Filter out internal system logs and tracking noise
-      const filtered = data.filter(
-        (l) => l.action_taken !== 'RAW_WEBHOOK_RECEIVED' && l.action_taken !== 'dm_sent_to_user'
-      );
-      setLogs(filtered);
+      setLogs(data);
+      if (typeof count === 'number') setTotalCount(count);
     }
     setIsLoading(false);
-  }, [preset, customFrom, customTo]);
+  }, [preset, customFrom, customTo, page]);
 
   useEffect(() => {
     fetchLogs();
@@ -408,6 +414,37 @@ export default function AnalyticsPage() {
                 </div>
               </motion.div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Bar */}
+        {totalCount > pageSize && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
+            <span className="text-xs text-slate-500 font-medium">
+              Showing <span className="font-bold text-slate-900">{(page - 1) * pageSize + 1}</span> to{' '}
+              <span className="font-bold text-slate-900">{Math.min(page * pageSize, totalCount)}</span> of{' '}
+              <span className="font-bold text-slate-900">{totalCount}</span> logs
+            </span>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-1"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Previous
+              </button>
+              <span className="text-xs font-bold text-slate-600 px-2">
+                Page {page} of {Math.ceil(totalCount / pageSize)}
+              </span>
+              <button
+                onClick={() => setPage((p) => (p * pageSize < totalCount ? p + 1 : p))}
+                disabled={page * pageSize >= totalCount}
+                className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-1"
+              >
+                Next <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         )}
       </div>
