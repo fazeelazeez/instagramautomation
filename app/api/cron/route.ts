@@ -118,10 +118,27 @@ export async function GET(request: Request) {
 
       for (const log of pendingLogs) {
         if (!log.sender_handle) continue;
+        let recipientId = log.sender_handle;
+
+        // If log stored text username instead of numeric IGSID (older test logs), try finding numeric ID
+        if (!/^\d+$/.test(recipientId)) {
+          const { data: matchLogs } = await supabase
+            .from('automation_logs')
+            .select('sender_handle')
+            .neq('sender_handle', recipientId)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+          const numericMatch = (matchLogs || []).find((m: any) => m.sender_handle && /^\d+$/.test(m.sender_handle));
+          if (numericMatch) {
+            recipientId = numericMatch.sender_handle;
+          }
+        }
+
         const { data: userActivity } = await supabase
           .from('automation_logs')
           .select('id')
-          .eq('sender_handle', log.sender_handle)
+          .or(`sender_handle.eq.${log.sender_handle},sender_handle.eq.${recipientId}`)
           .gte('created_at', log.created_at)
           .in('action_taken', ['both', 'comment_only', 'DIRECT_SHARE_COMPLETED_20M']);
 
@@ -132,7 +149,7 @@ export async function GET(request: Request) {
 
         if (priceFlow && priceFlow.response_dm) {
           try {
-            await sendDirectMessageToUser(log.sender_handle, priceFlow.response_dm);
+            await sendDirectMessageToUser(recipientId, priceFlow.response_dm);
             await supabase.from('automation_logs').update({ action_taken: 'DIRECT_SHARE_COMPLETED_20M' }).eq('id', log.id);
             directSharesProcessed++;
           } catch (dmErr) {}
