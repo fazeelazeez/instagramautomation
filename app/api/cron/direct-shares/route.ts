@@ -45,7 +45,7 @@ export async function GET() {
         .select('*')
         .eq('sender_handle', sender_handle)
         .gte('created_at', created_at)
-        .in('action_taken', ['both', 'comment_only', 'customer_replied', 'DIRECT_SHARE_COMPLETED_20M']);
+        .in('action_taken', ['both', 'comment_only', 'DIRECT_SHARE_COMPLETED_20M']);
 
       if (userActivity && userActivity.length > 0) {
         console.log(`User @${sender_handle} already commented/replied. Cancelling 20m direct fallback.`);

@@ -123,7 +123,7 @@ export async function GET(request: Request) {
           .select('id')
           .eq('sender_handle', log.sender_handle)
           .gte('created_at', log.created_at)
-          .in('action_taken', ['both', 'comment_only', 'customer_replied', 'DIRECT_SHARE_COMPLETED_20M']);
+          .in('action_taken', ['both', 'comment_only', 'DIRECT_SHARE_COMPLETED_20M']);
 
         if (userActivity && userActivity.length > 0) {
           await supabase.from('automation_logs').update({ action_taken: 'DIRECT_SHARE_COMMENTED_CANCELLED' }).eq('id', log.id);
