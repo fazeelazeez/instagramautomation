@@ -346,7 +346,7 @@ export default function AnalyticsPage() {
                       {(log.sender_handle || '?')[0]}
                     </div>
                       <span className="font-bold text-slate-900 text-sm truncate">
-                        {/^\d+$/.test(log.sender_handle || '') ? `@User (${(log.sender_handle || '').substring(0, 5)}...)` : `@${log.sender_handle || 'unknown'}`}
+                        @{log.sender_handle || 'unknown'}
                       </span>
                   </div>
 

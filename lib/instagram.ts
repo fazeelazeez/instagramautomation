@@ -20,6 +20,23 @@ export async function getMediaShortcode(mediaId: string): Promise<string | null>
 }
 
 /**
+ * Fetches the Instagram Username for a numeric User ID.
+ */
+export async function getInstagramUsername(userId: string): Promise<string> {
+  if (!userId || !/^\d+$/.test(userId)) return userId || 'unknown';
+  const token = await getAccessToken();
+  const url = `https://graph.instagram.com/v25.0/${userId}?fields=username&access_token=${token}`;
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data && data.username) return data.username;
+  } catch (e) {
+    console.error('Failed to fetch Instagram username:', e);
+  }
+  return userId;
+}
+
+/**
  * Checks if a specific Instagram user follows the Instagram Business account.
  */
 export async function checkUserFollowsBusiness(userId: string): Promise<boolean> {
