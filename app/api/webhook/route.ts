@@ -5,6 +5,9 @@ import { matchesKeywordInSentence, isAppreciationComment, DEFAULT_APPRECIATION_R
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'silqueen_automation_2026';
 
+// In-memory set for ultra-fast webhook deduplication across concurrent executions
+const processedCommentIds = new Set<string>();
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
@@ -24,19 +27,16 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   console.log('Received Webhook:', JSON.stringify(body, null, 2));
 
-  // IMPORTANT: On Vercel, we MUST await before returning — background tasks get killed instantly!
   try {
     await processWebhook(body);
   } catch (err) {
     console.error('Webhook processing error:', err);
   }
 
-  // Always return 200 to Meta
   return NextResponse.json({ status: 'success' });
 }
 
 async function processWebhook(body: any) {
-  // Log raw incoming webhook
   try {
     await supabase.from('automation_logs').insert([{
       action_taken: 'RAW_WEBHOOK_RECEIVED',
@@ -53,7 +53,6 @@ async function processWebhook(body: any) {
     return;
   }
 
-  // Fetch all active automation flows once for matching
   let activeFlows: any[] = [];
   try {
     const { data } = await supabase
@@ -80,14 +79,26 @@ async function processWebhook(body: any) {
       }
 
       const rawCommentText = commentData.text.trim();
-      const commentTextUpper = rawCommentText.toUpperCase();
       const commentId = commentData.id;
       const fromId = commentData.from.id;
       const fromUsername = commentData.from.username || 'unknown';
 
-      console.log(`Processing comment: "${rawCommentText}" from @${fromUsername}`);
+      console.log(`Processing comment [ID: ${commentId}]: "${rawCommentText}" from @${fromUsername}`);
 
-      // Anti-spam check
+      // 1. In-memory Deduplication Check
+      if (processedCommentIds.has(commentId)) {
+        console.log('In-memory lock triggered: Comment already processing/processed:', commentId);
+        continue;
+      }
+      processedCommentIds.add(commentId);
+
+      // Clean up in-memory set size periodically (keep max 1000 items)
+      if (processedCommentIds.size > 1000) {
+        const firstKey = processedCommentIds.values().next().value;
+        if (firstKey) processedCommentIds.delete(firstKey);
+      }
+
+      // 2. Database Anti-Spam / Deduplication Check
       try {
         const { data: existingLog } = await supabase
           .from('automation_logs')
@@ -96,7 +107,7 @@ async function processWebhook(body: any) {
           .maybeSingle();
 
         if (existingLog) {
-          console.log('Already processed comment:', commentId);
+          console.log('Database lock triggered: Comment already in automation_logs:', commentId);
           continue;
         }
       } catch (spamErr) {
@@ -146,10 +157,8 @@ async function processWebhook(body: any) {
         const randomIndex = Math.floor(Math.random() * DEFAULT_APPRECIATION_REPLIES.length);
         const randomReply = DEFAULT_APPRECIATION_REPLIES[randomIndex];
 
+        // Reserve DB log BEFORE sending reply to prevent concurrent execution
         try {
-          await replyToComment(commentId, randomReply);
-          console.log('Appreciation comment reply sent ✅');
-          
           await supabase.from('automation_logs').insert([{
             flow_id: null,
             instagram_post_id: commentId,
@@ -157,6 +166,11 @@ async function processWebhook(body: any) {
             action_taken: 'comment_only',
             status: 'processed'
           }]);
+        } catch (e) {}
+
+        try {
+          await replyToComment(commentId, randomReply);
+          console.log('Appreciation comment reply sent ✅');
         } catch (apprErr) {
           console.error('Failed to reply to appreciation comment:', apprErr);
         }
@@ -169,6 +183,17 @@ async function processWebhook(body: any) {
       }
 
       console.log('Flow matched! Executing:', flow.name);
+
+      // Reserve DB log BEFORE executing replies to prevent duplicate concurrent webhook retries
+      try {
+        await supabase.from('automation_logs').insert([{
+          flow_id: flow.id,
+          instagram_post_id: commentId,
+          sender_handle: fromUsername,
+          action_taken: 'both',
+          status: 'processed'
+        }]);
+      } catch (e) {}
 
       // Reply to comment
       if (flow.response_comment) {
@@ -189,20 +214,6 @@ async function processWebhook(body: any) {
           console.error('Failed to send DM:', err);
         }
       }
-
-      // Log success
-      try {
-        await supabase.from('automation_logs').insert([{
-          flow_id: flow.id,
-          instagram_post_id: commentId,
-          sender_handle: fromUsername,
-          action_taken: 'both',
-          status: 'processed'
-        }]);
-        console.log('Success logged to DB ✅');
-      } catch (logErr) {
-        console.error('Failed to log success:', logErr);
-      }
     }
 
     // -------------------------------------------------------------
@@ -215,9 +226,16 @@ async function processWebhook(body: any) {
       if (!senderId || !messageObj) continue;
 
       const messageText = (messageObj.text || '').trim();
-      console.log(`Processing DM/Story reply from user ID ${senderId}: "${messageText}"`);
+      const messageId = messageObj.mid || ('DM_' + Date.now());
+      console.log(`Processing DM/Story reply [ID: ${messageId}] from user ID ${senderId}: "${messageText}"`);
 
       if (!messageText) continue;
+
+      if (processedCommentIds.has(messageId)) {
+        console.log('In-memory lock triggered: DM already processed:', messageId);
+        continue;
+      }
+      processedCommentIds.add(messageId);
 
       // Find matching flow
       const matchedFlows = activeFlows.filter(f => {
@@ -232,6 +250,16 @@ async function processWebhook(body: any) {
 
       console.log('DM Flow matched! Replying to user:', flow.name);
 
+      try {
+        await supabase.from('automation_logs').insert([{
+          flow_id: flow.id,
+          instagram_post_id: messageId,
+          sender_handle: senderId,
+          action_taken: 'dm_only',
+          status: 'processed'
+        }]);
+      } catch (e) {}
+
       if (flow.response_dm) {
         try {
           await sendDirectMessageToUser(senderId, flow.response_dm);
@@ -240,16 +268,6 @@ async function processWebhook(body: any) {
           console.error('Failed to send Story Reply DM:', dmErr);
         }
       }
-
-      try {
-        await supabase.from('automation_logs').insert([{
-          flow_id: flow.id,
-          instagram_post_id: 'DM_' + Date.now(),
-          sender_handle: senderId,
-          action_taken: 'dm_only',
-          status: 'processed'
-        }]);
-      } catch (e) {}
     }
   }
 }
