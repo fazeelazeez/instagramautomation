@@ -39,3 +39,11 @@ CREATE TABLE IF NOT EXISTS automation_logs (
   status TEXT DEFAULT 'success',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Secure Tables: Enable Row Level Security (RLS)
+-- By enabling RLS without policies, we block all access via the public anon key.
+-- Our server actions will bypass RLS by using the SUPABASE_SERVICE_ROLE_KEY.
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE instagram_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_flows ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_logs ENABLE ROW LEVEL SECURITY;

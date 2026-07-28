@@ -1,0 +1,64 @@
+'use server';
+
+import { supabase } from '@/lib/supabase';
+
+/**
+ * Fetches recent logs for the dashboard overview.
+ */
+export async function getRecentLogs(limit: number = 200) {
+  try {
+    const { data, error } = await supabase
+      .from('automation_logs')
+      .select('*')
+      .neq('action_taken', 'RAW_WEBHOOK_RECEIVED')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Failed to fetch recent logs:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in getRecentLogs:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches logs for the analytics page with pagination and date filtering.
+ */
+export async function getAnalyticsLogs({
+  from,
+  to,
+  page,
+  pageSize
+}: {
+  from: string;
+  to: string;
+  page: number;
+  pageSize: number;
+}) {
+  try {
+    const { data, count, error } = await supabase
+      .from('automation_logs')
+      .select('*, automation_flows(*)', { count: 'exact' })
+      .neq('action_taken', 'RAW_WEBHOOK_RECEIVED')
+      .neq('action_taken', 'dm_sent_to_user')
+      .gte('created_at', from)
+      .lte('created_at', to)
+      .order('created_at', { ascending: false })
+      .range((page - 1) * pageSize, page * pageSize - 1);
+
+    if (error) {
+      console.error('Failed to fetch analytics logs:', error);
+      return { data: [], count: 0, error };
+    }
+
+    return { data: data || [], count: count || 0, error: null };
+  } catch (error) {
+    console.error('Error in getAnalyticsLogs:', error);
+    return { data: [], count: 0, error };
+  }
+}

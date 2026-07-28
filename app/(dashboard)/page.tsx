@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { getFlows } from '@/app/actions/flows';
-import { supabase } from '@/lib/supabase';
+import { getRecentLogs } from '@/app/actions/logs';
 
 export default function Home() {
   const [flows, setFlows] = useState<any[]>([]);
@@ -61,12 +61,7 @@ export default function Home() {
         setFlows(Object.values(groups));
 
         // ── Load logs for stats ─────────────────────────────────
-        const { data: logs } = await supabase
-          .from('automation_logs')
-          .select('*')
-          .neq('action_taken', 'RAW_WEBHOOK_RECEIVED')
-          .order('created_at', { ascending: false })
-          .limit(200);
+        const logs = await getRecentLogs(200);
 
         if (logs) {
           const hits = logs.filter((l: any) => l.status === 'processed').length;

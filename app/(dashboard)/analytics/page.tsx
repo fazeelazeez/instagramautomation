@@ -19,7 +19,7 @@ import {
   User,
   Filter
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getAnalyticsLogs } from '@/app/actions/logs';
 
 // ── Date filter presets ──────────────────────────────────────────
 type Preset = 'today' | 'this_week' | 'this_month' | 'last_month' | 'custom';
@@ -83,15 +83,7 @@ export default function AnalyticsPage() {
     setIsLoading(true);
     const { from, to } = getDateRange(preset, customFrom, customTo);
 
-    const { data, count, error } = await supabase
-      .from('automation_logs')
-      .select('*, automation_flows(*)', { count: 'exact' })
-      .neq('action_taken', 'RAW_WEBHOOK_RECEIVED')
-      .neq('action_taken', 'dm_sent_to_user')
-      .gte('created_at', from)
-      .lte('created_at', to)
-      .order('created_at', { ascending: false })
-      .range((page - 1) * pageSize, page * pageSize - 1);
+    const { data, count, error } = await getAnalyticsLogs({ from, to, page, pageSize });
 
     if (!error && data) {
       setLogs(data);
