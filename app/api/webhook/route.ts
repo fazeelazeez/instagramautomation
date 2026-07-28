@@ -321,8 +321,8 @@ async function processWebhook(body: any) {
         return matchesKeywordInSentence(messageText, f.trigger_keyword);
       });
 
-      // Handle Direct Reel Share Event (Step 1: Ask user to follow & comment)
-      if (isShareEvent && !matchedFlows.length) {
+      // Handle Direct Reel Share Event (Step 1: Ask user to follow & comment FIRST)
+      if (isShareEvent) {
         console.log(`Reel/Post Share detected in DM from @${senderHandle}. Shared URL: ${sharedUrl}`);
 
         const promptMessage = `Thanks for reaching out! ✨ Please follow our page @silqueendesigns and comment "DETAILS" or "PRICE" on that reel to get instant pricing details!`;
