@@ -17,7 +17,8 @@ import {
   AlertCircle,
   Clock,
   User,
-  Filter
+  Filter,
+  ExternalLink
 } from 'lucide-react';
 import { getAnalyticsLogs } from '@/app/actions/logs';
 
@@ -485,6 +486,51 @@ export default function AnalyticsPage() {
                     <span className="font-bold text-slate-900 text-sm">{getActionLabel(selectedLog.action_taken)}</span>
                   </div>
                 </div>
+
+                {/* Target Post / Reel Link */}
+                {(() => {
+                  let postUrl = null;
+                  const rawPostId = selectedLog.instagram_post_id;
+                  const flowPostId = selectedLog.automation_flows?.post_id;
+
+                  if (rawPostId) {
+                    if (rawPostId.startsWith('http://') || rawPostId.startsWith('https://')) {
+                      postUrl = rawPostId;
+                    } else if (flowPostId && (flowPostId.startsWith('http://') || flowPostId.startsWith('https://'))) {
+                      postUrl = flowPostId;
+                    } else {
+                      postUrl = `https://www.instagram.com/p/${rawPostId}/`;
+                    }
+                  } else if (flowPostId && (flowPostId.startsWith('http://') || flowPostId.startsWith('https://'))) {
+                    postUrl = flowPostId;
+                  }
+
+                  if (!postUrl) return null;
+
+                  return (
+                    <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-pink-50/80 via-purple-50/50 to-blue-50/80 border border-pink-100 rounded-2xl text-xs shadow-sm">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 bg-pink-500/10 rounded-xl flex items-center justify-center text-pink-600 shrink-0">
+                          <ExternalLink className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-extrabold text-pink-600 uppercase tracking-wider block">TRIGGER POST / REEL LINK</span>
+                          <p className="font-semibold text-slate-700 truncate max-w-[220px] sm:max-w-[280px] text-xs">
+                            {postUrl}
+                          </p>
+                        </div>
+                      </div>
+                      <a
+                        href={postUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 bg-white border border-pink-200 text-pink-600 font-extrabold text-xs rounded-xl hover:bg-pink-600 hover:text-white transition-all shadow-sm shrink-0 flex items-center gap-1"
+                      >
+                        View Post ↗
+                      </a>
+                    </div>
+                  );
+                })()}
 
                 {/* Comment Reply Sent Section */}
                 {selectedLog.automation_flows?.response_comment && (
