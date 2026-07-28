@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { sendInstagramDM, sendDirectMessageToUser, replyToComment, getMediaShortcode, getInstagramUsername } from '@/lib/instagram';
 import { supabase } from '@/lib/supabase';
 import { matchesKeywordInSentence, isAppreciationComment, DEFAULT_APPRECIATION_REPLIES } from '@/lib/matching';
+import { analyzeCommentWithAI } from '@/lib/ai';
 
-// Version 1.7 - Production Ready Instagram Webhook with Username Resolution
+// Version 2.0 - Production Ready Instagram Webhook with Google Gemini 2.5 Flash AI Engine
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'silqueen_automation_2026';
 
 // In-memory set for ultra-fast webhook deduplication across concurrent executions
@@ -114,7 +115,7 @@ async function processWebhook(body: any) {
         console.error('Anti-spam check failed:', spamErr);
       }
 
-      // Match flows using exact, sentence, and fuzzy matching
+      // STEP 1: Match active flows using exact, sentence, and fuzzy matching
       const matchedFlows = activeFlows.filter(f => {
         return matchesKeywordInSentence(rawCommentText, f.trigger_keyword);
       });
@@ -151,9 +152,52 @@ async function processWebhook(body: any) {
         }
       }
 
-      // Handle Appreciation Comments if no explicit flow matched
+      // STEP 2: Intelligent Fallback via Google Gemini 2.5 Flash AI Engine
+      if (!flow) {
+        console.log(`No explicit keyword flow matched for "${rawCommentText}". Analyzing via Gemini 2.5 Flash AI...`);
+        const aiResult = await analyzeCommentWithAI(rawCommentText);
+
+        if (aiResult) {
+          console.log('Gemini AI Analysis Result:', JSON.stringify(aiResult));
+
+          if (aiResult.intent === 'PRICE_INQUIRY') {
+            // Find default Price/Details flow
+            const priceFlow = activeFlows.find(f => 
+              f.trigger_keyword === 'PRICE' || 
+              f.trigger_keyword === 'DETAILS' || 
+              f.trigger_keyword === 'RATE'
+            ) || activeFlows[0];
+
+            if (priceFlow) {
+              flow = priceFlow;
+              console.log('Gemini AI identified PRICE_INQUIRY ➔ Executing flow:', flow.name);
+            }
+          } else {
+            // Compliment or General Comment ➔ Reply with AI generated comment
+            try {
+              await supabase.from('automation_logs').insert([{
+                flow_id: null,
+                instagram_post_id: commentId,
+                sender_handle: fromUsername,
+                action_taken: 'ai_comment_reply',
+                status: 'processed'
+              }]);
+            } catch (e) {}
+
+            try {
+              await replyToComment(commentId, aiResult.suggestedReply);
+              console.log('Gemini AI comment reply sent ✅:', aiResult.suggestedReply);
+            } catch (aiErr) {
+              console.error('Failed to reply with Gemini AI comment:', aiErr);
+            }
+            continue;
+          }
+        }
+      }
+
+      // STEP 3: Fallback to local appreciation patterns if Gemini AI is unavailable
       if (!flow && isAppreciationComment(rawCommentText)) {
-        console.log(`Detected appreciation comment: "${rawCommentText}". Sending randomized thank-you reply.`);
+        console.log(`Detected appreciation comment via local rules: "${rawCommentText}". Sending thank-you reply.`);
         const randomIndex = Math.floor(Math.random() * DEFAULT_APPRECIATION_REPLIES.length);
         const randomReply = DEFAULT_APPRECIATION_REPLIES[randomIndex];
 
@@ -169,7 +213,7 @@ async function processWebhook(body: any) {
 
         try {
           await replyToComment(commentId, randomReply);
-          console.log('Appreciation comment reply sent ✅');
+          console.log('Local appreciation comment reply sent ✅');
         } catch (apprErr) {
           console.error('Failed to reply to appreciation comment:', apprErr);
         }
@@ -177,7 +221,7 @@ async function processWebhook(body: any) {
       }
 
       if (!flow) {
-        console.log(`No active flow or appreciation pattern matched for comment: "${rawCommentText}"`);
+        console.log(`No active flow, AI analysis, or appreciation pattern matched for comment: "${rawCommentText}"`);
         continue;
       }
 
@@ -193,7 +237,7 @@ async function processWebhook(body: any) {
         }]);
       } catch (e) {}
 
-      // Reply to comment
+      // Reply to comment (use AI suggested reply if available, otherwise flow reply)
       if (flow.response_comment) {
         try {
           await replyToComment(commentId, flow.response_comment);
@@ -223,7 +267,6 @@ async function processWebhook(body: any) {
 
       if (!senderId || !messageObj) continue;
 
-      // Resolve numeric User ID to actual Instagram @username
       const senderHandle = await getInstagramUsername(senderId);
 
       const messageText = (messageObj.text || '').trim();
