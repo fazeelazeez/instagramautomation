@@ -99,7 +99,52 @@ export async function GET(request: Request) {
   }
 
   // -------------------------------------------------------------
-  // 2. Token Auto-Refresh (Bi-monthly on 1st & 15th)
+  // 2. Process Direct Share 20-Minute Price Fallbacks
+  // -------------------------------------------------------------
+  let directSharesProcessed = 0;
+  try {
+    const twentyMinsAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    const { data: pendingLogs } = await supabase
+      .from('automation_logs')
+      .select('*')
+      .eq('action_taken', 'DIRECT_SHARE_PENDING_20M')
+      .lte('created_at', twentyMinsAgo);
+
+    if (pendingLogs && pendingLogs.length > 0) {
+      const { data: flows } = await supabase.from('automation_flows').select('*').eq('is_active', true);
+      const priceFlow = (flows || []).find((f: any) =>
+        ['PRICE', 'DETAILS', 'RATE'].includes(f.trigger_keyword)
+      ) || (flows || [])[0];
+
+      for (const log of pendingLogs) {
+        if (!log.sender_handle) continue;
+        const { data: userActivity } = await supabase
+          .from('automation_logs')
+          .select('id')
+          .eq('sender_handle', log.sender_handle)
+          .gte('created_at', log.created_at)
+          .in('action_taken', ['both', 'comment_only', 'customer_replied', 'DIRECT_SHARE_COMPLETED_20M']);
+
+        if (userActivity && userActivity.length > 0) {
+          await supabase.from('automation_logs').update({ action_taken: 'DIRECT_SHARE_COMMENTED_CANCELLED' }).eq('id', log.id);
+          continue;
+        }
+
+        if (priceFlow && priceFlow.response_dm) {
+          try {
+            await sendDirectMessageToUser(log.sender_handle, priceFlow.response_dm);
+            await supabase.from('automation_logs').update({ action_taken: 'DIRECT_SHARE_COMPLETED_20M' }).eq('id', log.id);
+            directSharesProcessed++;
+          } catch (dmErr) {}
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Direct share cron portion error:', err);
+  }
+
+  // -------------------------------------------------------------
+  // 3. Token Auto-Refresh (Bi-monthly on 1st & 15th)
   // -------------------------------------------------------------
   const dayOfMonth = new Date().getDate();
   if (dayOfMonth === 1 || dayOfMonth === 15) {
@@ -129,6 +174,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     success: true,
     followUpsSent,
+    directSharesProcessed,
     tokenRefreshed
   });
 }
