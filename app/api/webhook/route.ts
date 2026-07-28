@@ -4,8 +4,9 @@ import { supabase } from '@/lib/supabase';
 import { matchesKeywordInSentence, isAppreciationComment, DEFAULT_APPRECIATION_REPLIES } from '@/lib/matching';
 import { analyzeCommentWithAI } from '@/lib/ai';
 
-// Version 2.1 - Production Ready Instagram Webhook with Bulletproof Anti-Spam Locking (.limit(1))
+// Version 2.2 - Production Ready Instagram Webhook with Self-Reply Loop Guard
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'silqueen_automation_2026';
+const INSTAGRAM_BUSINESS_ID = '17841462007877659';
 
 // Global In-memory set for ultra-fast webhook deduplication across concurrent executions
 const processedCommentIds = new Set<string>();
@@ -81,9 +82,15 @@ async function processWebhook(body: any) {
       const rawCommentText = commentData.text.trim();
       const commentId = commentData.id;
       const fromId = commentData.from.id;
-      const fromUsername = commentData.from.username || 'unknown';
+      const fromUsername = (commentData.from.username || '').toLowerCase();
 
-      console.log(`Processing comment [ID: ${commentId}]: "${rawCommentText}" from @${fromUsername}`);
+      // CRITICAL GUARD: Skip processing comments/replies created by the Business Page itself!
+      if (fromId === INSTAGRAM_BUSINESS_ID || fromUsername === 'silqueendesigns') {
+        console.log(`Skipping self-comment webhook from business page (@${fromUsername} / ID: ${fromId})`);
+        continue;
+      }
+
+      console.log(`Processing comment [ID: ${commentId}]: "${rawCommentText}" from @${commentData.from.username}`);
 
       // STEP A: Instant In-memory Deduplication Check
       if (processedCommentIds.has(commentId)) {
@@ -97,7 +104,7 @@ async function processWebhook(body: any) {
         if (firstKey) processedCommentIds.delete(firstKey);
       }
 
-      // STEP B: Bulletproof Database Deduplication Check (.limit(1) never throws PGRST116)
+      // STEP B: Bulletproof Database Deduplication Check (.limit(1))
       try {
         const { data: existingLogs } = await supabase
           .from('automation_logs')
@@ -155,7 +162,7 @@ async function processWebhook(body: any) {
         await supabase.from('automation_logs').insert([{
           flow_id: flow?.id || null,
           instagram_post_id: commentId,
-          sender_handle: fromUsername,
+          sender_handle: commentData.from.username || fromUsername,
           action_taken: flow ? 'both' : 'comment_only',
           status: 'processed'
         }]);
@@ -244,6 +251,12 @@ async function processWebhook(body: any) {
       const messageObj = messagingItem.message;
 
       if (!senderId || !messageObj) continue;
+
+      // Skip processing DMs sent BY the Business Page itself!
+      if (senderId === INSTAGRAM_BUSINESS_ID) {
+        console.log('Skipping DM sent by business page itself.');
+        continue;
+      }
 
       const senderHandle = await getInstagramUsername(senderId);
 
