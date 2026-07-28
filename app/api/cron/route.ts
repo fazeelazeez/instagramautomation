@@ -103,20 +103,33 @@ export async function GET(request: Request) {
   // -------------------------------------------------------------
   let directSharesProcessed = 0;
   try {
-    const twentyMinsAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    const nowMs = Date.now();
+    const twentyMinsAgo = new Date(nowMs - 20 * 60 * 1000).toISOString();
+
     const { data: pendingLogs } = await supabase
       .from('automation_logs')
       .select('*')
       .eq('action_taken', 'DIRECT_SHARE_PENDING_20M')
       .lte('created_at', twentyMinsAgo);
 
-    if (pendingLogs && pendingLogs.length > 0) {
-      const { data: flows } = await supabase.from('automation_flows').select('*').eq('is_active', true);
-      const priceFlow = (flows || []).find((f: any) =>
-        ['PRICE', 'DETAILS', 'RATE'].includes(f.trigger_keyword)
-      ) || (flows || [])[0];
+    // Strictly enforce >= 20 minutes (1,200,000 ms) in JS Epoch time
+    const validPendingLogs = (pendingLogs || []).filter((log: any) => {
+      const createdMs = new Date(log.created_at).getTime();
+      return (nowMs - createdMs) >= (20 * 60 * 1000);
+    });
 
-      for (const log of pendingLogs) {
+    if (validPendingLogs.length > 0) {
+      const { data: flows } = await supabase.from('automation_flows').select('*').eq('is_active', true);
+
+      const parsedFlows = (flows || []).map((f: any) => {
+        let meta: any = {};
+        try {
+          meta = JSON.parse(f.name);
+        } catch (e) {}
+        return { ...f, _meta: meta };
+      });
+
+      for (const log of validPendingLogs) {
         if (!log.sender_handle) continue;
         let recipientId = log.sender_handle;
 
@@ -147,10 +160,32 @@ export async function GET(request: Request) {
           continue;
         }
 
-        if (priceFlow && priceFlow.response_dm) {
+        // Match exact product flow for the shared Reel URL
+        const sharedUrl = log.instagram_post_id || '';
+        const shortcodeMatch = sharedUrl.match(/(?:reel|p)\/([A-Za-z0-9_-]+)/i);
+        const shortcode = shortcodeMatch ? shortcodeMatch[1] : '';
+
+        let matchedFlow: any = null;
+        if (shortcode) {
+          matchedFlow = parsedFlows.find((f: any) =>
+            f._meta.scope === 'single' &&
+            (f._meta.postId?.includes(shortcode) || f._meta.postUrl?.includes(shortcode))
+          );
+        }
+
+        if (!matchedFlow) {
+          matchedFlow = parsedFlows.find((f: any) => f._meta.scope === 'all') ||
+                        parsedFlows.find((f: any) => ['PRICE', 'DETAILS', 'RATE'].includes(f.trigger_keyword)) ||
+                        parsedFlows[0];
+        }
+
+        if (matchedFlow && matchedFlow.response_dm) {
           try {
-            await sendDirectMessageToUser(recipientId, priceFlow.response_dm);
-            await supabase.from('automation_logs').update({ action_taken: 'DIRECT_SHARE_COMPLETED_20M' }).eq('id', log.id);
+            await sendDirectMessageToUser(recipientId, matchedFlow.response_dm);
+            await supabase
+              .from('automation_logs')
+              .update({ action_taken: 'DIRECT_SHARE_COMPLETED_20M', flow_id: matchedFlow.id })
+              .eq('id', log.id);
             directSharesProcessed++;
           } catch (dmErr) {}
         }
