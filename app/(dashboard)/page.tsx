@@ -61,7 +61,7 @@ export default function Home() {
         setFlows(Object.values(groups));
 
         // ── Load logs for stats ─────────────────────────────────
-        const logs = await getRecentLogs(200);
+        const logs = await getRecentLogs({ limit: 200 });
 
         if (logs) {
           const hits = logs.filter((l: any) => l.status === 'processed').length;

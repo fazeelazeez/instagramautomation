@@ -8,6 +8,13 @@ export interface AIAnalysisResult {
 }
 
 export async function analyzeCommentWithAI(commentText: string): Promise<AIAnalysisResult | null> {
+  const trimmed = (commentText || '').trim();
+  
+  // Guard: Skip AI for empty, ultra-short (<2 chars), or single-emoji comments to save AI credits
+  if (!trimmed || trimmed.length < 2) {
+    return null;
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey.trim().length === 0) {
     console.warn('GEMINI_API_KEY is not configured in environment variables.');
