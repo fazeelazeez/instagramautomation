@@ -345,6 +345,23 @@ async function processWebhook(body: any) {
         continue;
       }
 
+      // Guard: Check if user has a pending Reel Share within last 2 minutes
+      try {
+        const twoMinsAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+        const { data: recentPendingShare } = await supabase
+          .from('automation_logs')
+          .select('id')
+          .eq('sender_handle', senderHandle)
+          .eq('action_taken', 'DIRECT_SHARE_PENDING_20M')
+          .gte('created_at', twoMinsAgo)
+          .limit(1);
+
+        if (recentPendingShare && recentPendingShare.length > 0) {
+          console.log(`User @${senderHandle} has a pending Reel Share within last 2m. Skipping instant DM response.`);
+          continue;
+        }
+      } catch (e) {}
+
       let flow: any = matchedFlows[0];
       if (!flow) {
         console.log(`No active flow matched for DM: "${messageText}"`);
