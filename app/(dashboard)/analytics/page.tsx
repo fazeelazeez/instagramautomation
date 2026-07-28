@@ -72,6 +72,7 @@ export default function AnalyticsPage() {
   const [customTo, setCustomTo] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<any | null>(null);
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -336,7 +337,8 @@ export default function AnalyticsPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: Math.min(i * 0.02, 0.3) }}
-                className="px-6 py-4 hover:bg-slate-50/40 transition-colors"
+                onClick={() => setSelectedLog(log)}
+                className="px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer group"
               >
                 {/* Mobile layout */}
                 <div className="md:hidden flex flex-col gap-1">
@@ -448,6 +450,115 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
+
+      {/* Log Details Popup Modal */}
+      <AnimatePresence>
+        {selectedLog && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-lg w-full overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center text-primary font-bold">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-base">Automation Trigger Details</h3>
+                    <p className="text-xs text-slate-400">Triggered for @{selectedLog.sender_handle || 'user'} • {formatTime(selectedLog.created_at)}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="p-2 hover:bg-slate-200/60 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+                {/* Meta Grid */}
+                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs">
+                  <div>
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">USER</span>
+                    <span className="font-bold text-slate-900 text-sm">@{selectedLog.sender_handle || 'unknown'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ACTION PERFORMED</span>
+                    <span className="font-bold text-slate-900 text-sm">{getActionLabel(selectedLog.action_taken)}</span>
+                  </div>
+                </div>
+
+                {/* Comment Reply Sent Section */}
+                {selectedLog.automation_flows?.response_comment && (
+                  <div className="space-y-2">
+                    <span className="text-xs font-extrabold text-blue-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <MessageSquare className="w-4 h-4 text-blue-500" /> Public Comment Reply Sent
+                    </span>
+                    <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl text-slate-800 text-sm font-medium leading-relaxed">
+                      "{selectedLog.automation_flows.response_comment}"
+                    </div>
+                  </div>
+                )}
+
+                {/* Direct Message (DM) Sent Section */}
+                {(() => {
+                  const flow = selectedLog.automation_flows;
+                  if (!flow || !flow.response_dm) return null;
+                  let dmText = flow.response_dm;
+                  let followUpText = null;
+                  if (dmText.startsWith('{') || dmText.startsWith('[')) {
+                    try {
+                      const parsed = JSON.parse(dmText);
+                      dmText = parsed.text || dmText;
+                      if (parsed.followUpText) followUpText = parsed.followUpText;
+                    } catch (e) {}
+                  }
+
+                  return (
+                    <>
+                      <div className="space-y-2">
+                        <span className="text-xs font-extrabold text-purple-600 uppercase tracking-wider flex items-center gap-1.5">
+                          <Send className="w-4 h-4 text-purple-500" /> Direct Message (DM) Sent to Inbox
+                        </span>
+                        <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-2xl text-slate-800 text-sm font-medium whitespace-pre-wrap leading-relaxed">
+                          {dmText}
+                        </div>
+                      </div>
+
+                      {followUpText && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-extrabold text-amber-600 uppercase tracking-wider flex items-center gap-1.5">
+                            <Clock className="w-4 h-4 text-amber-500" /> Scheduled 24h Follow-up DM
+                          </span>
+                          <div className="p-4 bg-amber-50/60 border border-amber-100 rounded-2xl text-slate-800 text-xs italic leading-relaxed">
+                            "{followUpText}"
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="px-6 py-2.5 bg-primary text-white font-bold rounded-xl text-xs hover:bg-primary-hover transition-colors shadow-lg shadow-blue-500/20"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
