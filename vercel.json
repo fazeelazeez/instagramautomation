@@ -4,6 +4,10 @@
     {
       "path": "/api/cron",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/direct-shares",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

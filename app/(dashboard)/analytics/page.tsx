@@ -104,6 +104,9 @@ export default function AnalyticsPage() {
     if (action === 'customer_replied') return 'Customer Replied';
     if (action === 'ai_comment_reply') return 'AI Comment Reply';
     if (action === 'followup_sent') return '24h Follow-up DM';
+    if (action === 'DIRECT_SHARE_PENDING_20M') return 'Reel Share Prompt (Pending 20m)';
+    if (action === 'DIRECT_SHARE_COMPLETED_20M') return '20m Direct Price DM Sent';
+    if (action === 'DIRECT_SHARE_COMMENTED_CANCELLED') return 'Reel Share (User Commented)';
     return action || '—';
   };
 

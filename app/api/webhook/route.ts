@@ -305,18 +305,45 @@ async function processWebhook(body: any) {
         console.log(`Log created: customer_replied for @${senderHandle} (cancels 24h follow-up) ✅`);
       } catch (e) {}
 
-      if (!messageText) continue;
+      // Detect if user shared a Reel or Post to DM (via attachments, share payload, or Instagram URL)
+      const hasAttachment = Boolean(messageObj.attachments?.length || messageObj.share);
+      const isReelLink = messageText.includes('instagram.com/reel') || messageText.includes('instagram.com/p/');
+      const isShareEvent = hasAttachment || isReelLink;
 
-      if (processedCommentIds.has(messageId)) {
-        console.log('In-memory lock triggered: DM already processed:', messageId);
-        continue;
+      let sharedUrl = messageObj.share?.link || messageObj.attachments?.[0]?.payload?.url || '';
+      if (!sharedUrl && isReelLink) {
+        const match = messageText.match(/https?:\/\/(www\.)?instagram\.com\/(reel|p)\/[A-Za-z0-9_-]+/i);
+        if (match) sharedUrl = match[0];
       }
-      processedCommentIds.add(messageId);
 
       // Find matching flow
       const matchedFlows = activeFlows.filter(f => {
         return matchesKeywordInSentence(messageText, f.trigger_keyword);
       });
+
+      // Handle Direct Reel Share Event (Step 1: Ask user to follow & comment)
+      if (isShareEvent && !matchedFlows.length) {
+        console.log(`Reel/Post Share detected in DM from @${senderHandle}. Shared URL: ${sharedUrl}`);
+
+        const promptMessage = `Thanks for reaching out! ✨ Please follow our page @silqueendesigns and comment "DETAILS" or "PRICE" on that reel to get instant pricing details!`;
+
+        try {
+          await sendDirectMessageToUser(senderId, promptMessage);
+          console.log(`Step 1 Prompt DM sent to @${senderHandle} for shared reel ✅`);
+
+          await supabase.from('automation_logs').insert([{
+            flow_id: null,
+            instagram_post_id: sharedUrl || ('SHARED_' + Date.now()),
+            sender_handle: senderHandle,
+            action_taken: 'DIRECT_SHARE_PENDING_20M',
+            status: 'processed'
+          }]);
+          console.log(`Logged DIRECT_SHARE_PENDING_20M for @${senderHandle} ✅`);
+        } catch (promptErr) {
+          console.error('Failed to send Step 1 prompt DM:', promptErr);
+        }
+        continue;
+      }
 
       let flow: any = matchedFlows[0];
       if (!flow) {
