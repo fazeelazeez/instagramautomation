@@ -580,8 +580,8 @@ export default function FlowsPage() {
       </div>
     </div>
 
-      {/* ── Filter Tabs & Controls ── */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mb-8">
+      {/* ── Filter Tabs ── */}
+      <div className="flex items-center justify-between gap-4 mb-8">
         {/* Segmented Filter Pills */}
         <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl overflow-x-auto no-scrollbar">
           {[
@@ -616,21 +616,6 @@ export default function FlowsPage() {
               </button>
             );
           })}
-        </div>
-
-        {/* Quick Search */}
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search automations..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200/80 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"
-          />
         </div>
       </div>
 
