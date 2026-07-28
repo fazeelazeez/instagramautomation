@@ -39,7 +39,7 @@ export async function GET() {
 
       if (!sender_handle) continue;
 
-      // Check if user has commented or replied since the direct share
+      // Check if user has commented since the direct share
       const { data: userActivity } = await supabase
         .from('automation_logs')
         .select('*')

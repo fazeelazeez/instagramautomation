@@ -334,11 +334,11 @@ async function processWebhook(body: any) {
           await supabase.from('automation_logs').insert([{
             flow_id: null,
             instagram_post_id: sharedUrl || ('SHARED_' + Date.now()),
-            sender_handle: senderHandle,
+            sender_handle: senderId, // Must be numeric IGSID for Meta Send API
             action_taken: 'DIRECT_SHARE_PENDING_20M',
             status: 'processed'
           }]);
-          console.log(`Logged DIRECT_SHARE_PENDING_20M for @${senderHandle} ✅`);
+          console.log(`Logged DIRECT_SHARE_PENDING_20M for senderId: ${senderId} (@${senderHandle}) ✅`);
         } catch (promptErr) {
           console.error('Failed to send Step 1 prompt DM:', promptErr);
         }
@@ -351,13 +351,13 @@ async function processWebhook(body: any) {
         const { data: recentPendingShare } = await supabase
           .from('automation_logs')
           .select('id')
-          .eq('sender_handle', senderHandle)
+          .or(`sender_handle.eq.${senderId},sender_handle.eq.${senderHandle}`)
           .eq('action_taken', 'DIRECT_SHARE_PENDING_20M')
           .gte('created_at', twoMinsAgo)
           .limit(1);
 
         if (recentPendingShare && recentPendingShare.length > 0) {
-          console.log(`User @${senderHandle} has a pending Reel Share within last 2m. Skipping instant DM response.`);
+          console.log(`User @${senderHandle} (${senderId}) has a pending Reel Share within last 2m. Skipping instant DM response.`);
           continue;
         }
       } catch (e) {}
