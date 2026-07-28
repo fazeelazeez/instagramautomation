@@ -1,6 +1,6 @@
 /**
  * Helper functions for Fuzzy String Matching, Sentence Keyword Detection,
- * and Appreciation Comment Detection.
+ * Intent/Alias Mapping (PP, ethrayavum, etc.), and Appreciation Comment Detection.
  */
 
 // Calculate Levenshtein distance between two strings
@@ -32,6 +32,24 @@ export function levenshteinDistance(a: string, b: string): number {
 }
 
 /**
+ * Keyword Aliases & Shorthand mapping.
+ * Maps primary flow triggers (PRICE, RATE, DETAILS) to shorthand & Manglish variants.
+ */
+export const KEYWORD_ALIASES: Record<string, string[]> = {
+  PRICE: [
+    'PP', 'PRC', 'PRZE', 'PRZ', 'AMT', 'AMOUNT', 'COST', 'VILA', 'VILAYENTHA',
+    'ETHRA', 'ETHRAYA', 'ETHRAYAVUM', 'ETHRAA', 'ETHRAAYI', 'PRICE PLS', 'PP PLS', 'RATE'
+  ],
+  RATE: [
+    'PP', 'PRC', 'PRZE', 'PRZ', 'AMT', 'AMOUNT', 'COST', 'VILA', 'VILAYENTHA',
+    'ETHRA', 'ETHRAYA', 'ETHRAYAVUM', 'ETHRAA', 'ETHRAAYI', 'PRICE PLS', 'PP PLS', 'PRICE'
+  ],
+  DETAILS: [
+    'DTL', 'DTAIL', 'DTAILS', 'DETAILS PLS', 'DTLS', 'INFO', 'DETAILS PLEASE'
+  ]
+};
+
+/**
  * Checks if word matches target keyword using fuzzy logic.
  */
 export function isFuzzyMatch(word: string, targetKeyword: string): boolean {
@@ -40,6 +58,9 @@ export function isFuzzyMatch(word: string, targetKeyword: string): boolean {
 
   if (w === t) return true;
   if (w.length < 2 || t.length < 2) return false;
+
+  // Exact short shorthand (e.g. PP, PRC) should not be fuzzy matched loosely against long words
+  if (t === 'PP' || w === 'PP') return w === t;
 
   const distance = levenshteinDistance(w, t);
 
@@ -54,17 +75,27 @@ export function isFuzzyMatch(word: string, targetKeyword: string): boolean {
 }
 
 /**
- * Checks if text contains keyword as exact substring or fuzzy match within sentence.
+ * Checks if text contains keyword as exact substring, alias (PP, ethraya, etc.), or fuzzy match within sentence.
  */
 export function matchesKeywordInSentence(text: string, targetKeyword: string): boolean {
   const textUpper = text.toUpperCase();
-  const targetUpper = targetKeyword.toUpperCase();
+  const targetUpper = targetKeyword.trim().toUpperCase();
 
   // 1. Direct substring match
   if (textUpper.includes(targetUpper)) return true;
 
-  // 2. Tokenize and test each word fuzzy
+  // 2. Check Aliases (e.g., PP, PRC, ethraya for PRICE/RATE flows)
+  const aliases = KEYWORD_ALIASES[targetUpper] || [];
   const words = textUpper.split(/[\s,!?.-]+/).filter(Boolean);
+
+  for (const alias of aliases) {
+    if (textUpper.includes(alias)) return true;
+    for (const word of words) {
+      if (word === alias) return true;
+    }
+  }
+
+  // 3. Tokenize and test each word fuzzy
   for (const word of words) {
     if (isFuzzyMatch(word, targetUpper)) {
       return true;
@@ -86,7 +117,8 @@ export const APPRECIATION_EMOJIS = ['❤️', '😍', '🥰', '🔥', '👏', '�
 
 export const INQUIRY_KEYWORDS = [
   'PRICE', 'DETAILS', 'RATE', 'COST', 'DM', 'BUY', 'ORDER', 'HOW MUCH',
-  'RS', 'RUPEES', 'ഡീറ്റെയിൽസ്', 'വില'
+  'RS', 'RUPEES', 'ഡീറ്റെയിൽസ്', 'വില', 'PP', 'PRC', 'AMT', 'AMOUNT',
+  'ETHRA', 'ETHRAYA', 'ETHRAYAVUM', 'ETHRAAYI', 'ETHRAA', 'VILA', 'VILAYENTHA'
 ];
 
 export const DEFAULT_APPRECIATION_REPLIES = [
