@@ -4,10 +4,10 @@ import { supabase } from '@/lib/supabase';
 import { matchesKeywordInSentence, isAppreciationComment, DEFAULT_APPRECIATION_REPLIES } from '@/lib/matching';
 import { analyzeCommentWithAI } from '@/lib/ai';
 
-// Version 2.0 - Production Ready Instagram Webhook with Google Gemini 2.5 Flash AI Engine
+// Version 2.1 - Production Ready Instagram Webhook with Bulletproof Anti-Spam Locking (.limit(1))
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'silqueen_automation_2026';
 
-// In-memory set for ultra-fast webhook deduplication across concurrent executions
+// Global In-memory set for ultra-fast webhook deduplication across concurrent executions
 const processedCommentIds = new Set<string>();
 
 export async function GET(request: Request) {
@@ -46,9 +46,7 @@ async function processWebhook(body: any) {
       sender_handle: 'META',
       instagram_post_id: 'RAW_' + Date.now()
     }]);
-  } catch (logErr) {
-    console.error('DB log failed (non-critical):', logErr);
-  }
+  } catch (logErr) {}
 
   if (body.object !== 'instagram') {
     console.log('Not an Instagram event, skipping.');
@@ -87,27 +85,27 @@ async function processWebhook(body: any) {
 
       console.log(`Processing comment [ID: ${commentId}]: "${rawCommentText}" from @${fromUsername}`);
 
-      // 1. In-memory Deduplication Check
+      // STEP A: Instant In-memory Deduplication Check
       if (processedCommentIds.has(commentId)) {
         console.log('In-memory lock triggered: Comment already processing/processed:', commentId);
         continue;
       }
       processedCommentIds.add(commentId);
 
-      if (processedCommentIds.size > 1000) {
+      if (processedCommentIds.size > 2000) {
         const firstKey = processedCommentIds.values().next().value;
         if (firstKey) processedCommentIds.delete(firstKey);
       }
 
-      // 2. Database Anti-Spam / Deduplication Check
+      // STEP B: Bulletproof Database Deduplication Check (.limit(1) never throws PGRST116)
       try {
-        const { data: existingLog } = await supabase
+        const { data: existingLogs } = await supabase
           .from('automation_logs')
           .select('id')
           .eq('instagram_post_id', commentId)
-          .maybeSingle();
+          .limit(1);
 
-        if (existingLog) {
+        if (existingLogs && existingLogs.length > 0) {
           console.log('Database lock triggered: Comment already in automation_logs:', commentId);
           continue;
         }
@@ -152,6 +150,17 @@ async function processWebhook(body: any) {
         }
       }
 
+      // Reserve DB log IMMEDIATELY before executing any reply or AI call
+      try {
+        await supabase.from('automation_logs').insert([{
+          flow_id: flow?.id || null,
+          instagram_post_id: commentId,
+          sender_handle: fromUsername,
+          action_taken: flow ? 'both' : 'comment_only',
+          status: 'processed'
+        }]);
+      } catch (e) {}
+
       // STEP 2: Intelligent Fallback via Google Gemini 2.5 Flash AI Engine
       if (!flow) {
         console.log(`No explicit keyword flow matched for "${rawCommentText}". Analyzing via Gemini 2.5 Flash AI...`);
@@ -161,7 +170,6 @@ async function processWebhook(body: any) {
           console.log('Gemini AI Analysis Result:', JSON.stringify(aiResult));
 
           if (aiResult.intent === 'PRICE_INQUIRY') {
-            // Find default Price/Details flow
             const priceFlow = activeFlows.find(f => 
               f.trigger_keyword === 'PRICE' || 
               f.trigger_keyword === 'DETAILS' || 
@@ -174,16 +182,6 @@ async function processWebhook(body: any) {
             }
           } else {
             // Compliment or General Comment ➔ Reply with AI generated comment
-            try {
-              await supabase.from('automation_logs').insert([{
-                flow_id: null,
-                instagram_post_id: commentId,
-                sender_handle: fromUsername,
-                action_taken: 'ai_comment_reply',
-                status: 'processed'
-              }]);
-            } catch (e) {}
-
             try {
               await replyToComment(commentId, aiResult.suggestedReply);
               console.log('Gemini AI comment reply sent ✅:', aiResult.suggestedReply);
@@ -202,16 +200,6 @@ async function processWebhook(body: any) {
         const randomReply = DEFAULT_APPRECIATION_REPLIES[randomIndex];
 
         try {
-          await supabase.from('automation_logs').insert([{
-            flow_id: null,
-            instagram_post_id: commentId,
-            sender_handle: fromUsername,
-            action_taken: 'comment_only',
-            status: 'processed'
-          }]);
-        } catch (e) {}
-
-        try {
           await replyToComment(commentId, randomReply);
           console.log('Local appreciation comment reply sent ✅');
         } catch (apprErr) {
@@ -227,17 +215,7 @@ async function processWebhook(body: any) {
 
       console.log('Flow matched! Executing:', flow.name);
 
-      try {
-        await supabase.from('automation_logs').insert([{
-          flow_id: flow.id,
-          instagram_post_id: commentId,
-          sender_handle: fromUsername,
-          action_taken: 'both',
-          status: 'processed'
-        }]);
-      } catch (e) {}
-
-      // Reply to comment (use AI suggested reply if available, otherwise flow reply)
+      // Reply to comment
       if (flow.response_comment) {
         try {
           await replyToComment(commentId, flow.response_comment);
