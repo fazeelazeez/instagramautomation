@@ -345,9 +345,9 @@ export default function AnalyticsPage() {
                     <div className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center text-[10px] font-extrabold text-slate-500 uppercase shrink-0">
                       {(log.sender_handle || '?')[0]}
                     </div>
-                    <span className="font-bold text-slate-900 text-sm truncate">
-                      @{log.sender_handle || 'unknown'}
-                    </span>
+                      <span className="font-bold text-slate-900 text-sm truncate">
+                        {/^\d+$/.test(log.sender_handle || '') ? `@User (${(log.sender_handle || '').substring(0, 5)}...)` : `@${log.sender_handle || 'unknown'}`}
+                      </span>
                   </div>
 
                   {/* Action */}
