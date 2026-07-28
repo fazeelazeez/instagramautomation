@@ -35,16 +35,21 @@ export async function createFlow(formData: {
 }
 
 export async function getFlows() {
-  const { data, error } = await supabase
-    .from('automation_flows')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('automation_flows')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching flows:', error);
+    if (error) {
+      console.error('Error fetching flows:', error);
+      return [];
+    }
+    return JSON.parse(JSON.stringify(data || []));
+  } catch (error) {
+    console.error('Error in getFlows:', error);
     return [];
   }
-  return data;
 }
 
 export async function toggleFlowActive(id: string, currentStatus: boolean) {

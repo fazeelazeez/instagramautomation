@@ -99,8 +99,8 @@ export default function Home() {
         setIsLoading(false);
       }
     }
-    loadAll();
-  }, []);
+    loadLogsData();
+  }, [preset, customFrom, customTo]);
 
   const statCards = [
     { label: 'Total Comments', value: isLoading ? '...' : stats.totalComments, icon: MessageCircle, color: 'text-blue-600', bg: 'bg-blue-50' },

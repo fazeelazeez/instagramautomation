@@ -25,8 +25,8 @@ export async function getRecentLogs({ from, to, limit = 500 }: { from?: string; 
       return [];
     }
 
-    return data || [];
-  } catch (error) {
+    return JSON.parse(JSON.stringify(data || []));
+  } catch (error: any) {
     console.error('Error in getRecentLogs:', error);
     return [];
   }
@@ -59,12 +59,16 @@ export async function getAnalyticsLogs({
 
     if (error) {
       console.error('Failed to fetch analytics logs:', error);
-      return { data: [], count: 0, error };
+      return { data: [], count: 0, error: error.message || 'Database error' };
     }
 
-    return { data: data || [], count: count || 0, error: null };
-  } catch (error) {
+    return {
+      data: JSON.parse(JSON.stringify(data || [])),
+      count: count || 0,
+      error: null
+    };
+  } catch (error: any) {
     console.error('Error in getAnalyticsLogs:', error);
-    return { data: [], count: 0, error };
+    return { data: [], count: 0, error: error?.message || 'Server error' };
   }
 }

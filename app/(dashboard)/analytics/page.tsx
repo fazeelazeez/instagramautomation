@@ -41,15 +41,22 @@ export default function AnalyticsPage() {
 
   const fetchLogs = useCallback(async () => {
     setIsLoading(true);
-    const { from, to } = getDateRange(preset, customFrom, customTo);
+    try {
+      const { from, to } = getDateRange(preset, customFrom, customTo);
+      const res = await getAnalyticsLogs({ from, to, page, pageSize });
 
-    const { data, count, error } = await getAnalyticsLogs({ from, to, page, pageSize });
-
-    if (!error && data) {
-      setLogs(data);
-      if (typeof count === 'number') setTotalCount(count);
+      if (res && !res.error && Array.isArray(res.data)) {
+        setLogs(res.data);
+        if (typeof res.count === 'number') setTotalCount(res.count);
+      } else {
+        setLogs([]);
+      }
+    } catch (err) {
+      console.error('Error fetching logs in analytics:', err);
+      setLogs([]);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [preset, customFrom, customTo, page]);
 
   useEffect(() => {
