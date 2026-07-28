@@ -18,16 +18,38 @@ export async function getMediaShortcode(mediaId: string): Promise<string | null>
 }
 
 /**
+ * Checks if a specific Instagram user follows the Instagram Business account.
+ */
+export async function checkUserFollowsBusiness(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  // Graph API endpoint for user follow status
+  const url = `https://graph.instagram.com/v25.0/${userId}?fields=is_user_follow_business&access_token=${PAGE_ACCESS_TOKEN}`;
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data && typeof data.is_user_follow_business === 'boolean') {
+      return data.is_user_follow_business;
+    }
+  } catch (e) {
+    console.error('Failed to check user follow status:', e);
+  }
+  // Default to true on API error so we don't block legitimate users
+  return true;
+}
+
+/**
  * Sends a Direct Message to an Instagram user triggered by their comment.
  * Using comment_id as recipient bypasses the 24-hour window restriction.
  * @param commentId - The ID of the comment that triggered this DM.
  * @param messageText - The text or JSON config to send.
+ * @param userId - Optional user ID for follow verification.
  */
-export async function sendInstagramDM(commentId: string, messageText: string) {
+export async function sendInstagramDM(commentId: string, messageText: string, userId?: string) {
   const url = `https://graph.instagram.com/v25.0/${INSTAGRAM_BUSINESS_ID}/messages`;
 
   let textToSend = messageText;
   let quickRepliesPayload: any[] | undefined = undefined;
+  let requireFollow = false;
 
   // Safe parse JSON if it looks like JSON
   if (messageText && (messageText.trim().startsWith('{') || messageText.trim().startsWith('['))) {
@@ -35,6 +57,7 @@ export async function sendInstagramDM(commentId: string, messageText: string) {
       const parsed = JSON.parse(messageText);
       if (parsed && typeof parsed === 'object') {
         textToSend = parsed.text || '';
+        requireFollow = !!parsed.requireFollow;
 
         // Greeting Format quick replies
         if (parsed.greetingFormat === 'quick_reply' && parsed.quickReplyLabel) {
@@ -49,6 +72,15 @@ export async function sendInstagramDM(commentId: string, messageText: string) {
       }
     } catch (e) {
       console.warn('Failed to parse DM message text as JSON, falling back to raw text:', e);
+    }
+  }
+
+  // Follow Verification check
+  if (requireFollow && userId) {
+    const isFollowing = await checkUserFollowsBusiness(userId);
+    if (!isFollowing) {
+      console.log(`User ${userId} does not follow business page. Sending follow prompt.`);
+      textToSend = `Hey! ✨ Thank you for your comment! To receive the details in DM, please Follow our page @silqueendesigns first! 🌸`;
     }
   }
 
@@ -84,6 +116,47 @@ export async function sendInstagramDM(commentId: string, messageText: string) {
     throw new Error(`DM Error: ${JSON.stringify(data)}`);
   }
   console.log('DM sent successfully ✅:', data);
+  return data;
+}
+
+/**
+ * Sends a Direct Message to an Instagram User by Recipient User ID (for Story Replies or DMs).
+ */
+export async function sendDirectMessageToUser(recipientId: string, messageText: string) {
+  const url = `https://graph.instagram.com/v25.0/${INSTAGRAM_BUSINESS_ID}/messages`;
+
+  let textToSend = messageText;
+  if (messageText && (messageText.trim().startsWith('{') || messageText.trim().startsWith('['))) {
+    try {
+      const parsed = JSON.parse(messageText);
+      if (parsed && typeof parsed === 'object') {
+        textToSend = parsed.text || '';
+      }
+    } catch (e) {}
+  }
+
+  const payload = {
+    recipient: { id: recipientId },
+    message: { text: textToSend }
+  };
+
+  console.log('Sending DM to User ID:', recipientId, JSON.stringify(payload));
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${PAGE_ACCESS_TOKEN}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    console.error('User DM API Error:', JSON.stringify(data));
+    throw new Error(`User DM Error: ${JSON.stringify(data)}`);
+  }
+  console.log('User DM sent successfully ✅:', data);
   return data;
 }
 
