@@ -416,6 +416,14 @@ export default function FlowsPage() {
     if (commentTemplates.length > 1) setCommentTemplates(commentTemplates.filter((_, i) => i !== idx));
   };
 
+  const [activeScopeFilter, setActiveScopeFilter] = useState<'single' | 'all' | 'next' | 'everything'>('single');
+
+  // Counts for tabs
+  const singleCount = flowGroups.filter(g => g.scope === 'single').length;
+  const allCount = flowGroups.filter(g => g.scope === 'all').length;
+  const nextCount = flowGroups.filter(g => g.scope === 'next').length;
+  const totalCount = flowGroups.length;
+
   // Search & Filtering
   const filteredGroups = flowGroups.filter(g => {
     if (!searchQuery) return true;
@@ -425,13 +433,14 @@ export default function FlowsPage() {
     return matchName || matchLink;
   });
 
-  // Group flows by scope for sectioned display
-  const allPostsFlows = filteredGroups.filter(g => g.scope === 'all');
-  const upcomingFlows = filteredGroups.filter(g => g.scope === 'next');
-  
-  const allSinglePostFlows = filteredGroups.filter(g => g.scope === 'single');
-  const totalSinglePages = Math.max(1, Math.ceil(allSinglePostFlows.length / 10));
-  const singlePostFlows = allSinglePostFlows.slice((currentPage - 1) * 10, currentPage * 10);
+  const currentTabGroups = filteredGroups.filter(g => {
+    if (activeScopeFilter === 'everything') return true;
+    return g.scope === activeScopeFilter;
+  });
+
+  const flowsPerPage = 8;
+  const totalPages = Math.max(1, Math.ceil(currentTabGroups.length / flowsPerPage));
+  const paginatedFlowGroups = currentTabGroups.slice((currentPage - 1) * flowsPerPage, currentPage * flowsPerPage);
 
   const selectedScopeConfig = getScopeConfig(selectedScope);
   const conflictKeywords: string[] = []; // Disabled: We now support multiple flows with the same keyword
@@ -571,108 +580,129 @@ export default function FlowsPage() {
       </div>
     </div>
 
-      {/* Sectioned Flow Lists */}
+      {/* ── Filter Tabs & Controls ── */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mb-8">
+        {/* Segmented Filter Pills */}
+        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl overflow-x-auto no-scrollbar">
+          {[
+            { id: 'single', label: 'Single Post', count: singleCount, icon: ImageIcon },
+            { id: 'all', label: 'All Posts', count: allCount, icon: Globe },
+            { id: 'next', label: 'Upcoming Post', count: nextCount, icon: Sparkles },
+            { id: 'everything', label: 'All Automations', count: totalCount, icon: Zap }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeScopeFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveScopeFilter(tab.id as any);
+                  setCurrentPage(1);
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  isActive
+                    ? 'bg-white text-slate-900 shadow-md shadow-slate-200/50'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-primary' : 'text-slate-400'}`} />
+                <span>{tab.label}</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                  isActive ? 'bg-primary/10 text-primary' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Quick Search */}
+        <div className="relative w-full md:w-72">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search automations..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200/80 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-400 shadow-sm"
+          />
+        </div>
+      </div>
+
+      {/* ── Unified Flow Grid ── */}
       {isLoadingFlows ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-premium animate-pulse text-slate-400">
           Loading automation flows...
         </div>
-      ) : flowGroups.length === 0 ? (
-        <div className="text-center py-24 bg-white rounded-3xl border border-slate-100 shadow-premium flex flex-col items-center justify-center">
-          <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
-            <Zap className="w-8 h-8 text-slate-200" />
+      ) : paginatedFlowGroups.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-premium flex flex-col items-center justify-center">
+          <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mb-3">
+            <Zap className="w-7 h-7 text-slate-300" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900">No automations yet</h3>
-          <p className="text-slate-500 text-sm max-w-sm mt-1 mb-6">Create your first automation to start auto-replying to Instagram comments.</p>
+          <h3 className="text-base font-bold text-slate-900">
+            No {activeScopeFilter === 'single' ? 'Single Post' : activeScopeFilter === 'all' ? 'All Posts' : activeScopeFilter === 'next' ? 'Upcoming Post' : ''} automations found
+          </h3>
+          <p className="text-slate-400 text-xs max-w-sm mt-1 mb-6">
+            {searchQuery ? 'Try matching your search query or clear filters.' : 'Create an automation for this category to get started.'}
+          </p>
           <button
-            onClick={() => setDropdownOpen(true)}
-            className="px-6 py-3 bg-primary text-white font-bold rounded-xl text-xs hover:bg-primary-hover transition-colors flex items-center gap-2"
+            onClick={() => startNewFlow(activeScopeFilter === 'everything' ? 'single' : activeScopeFilter as any)}
+            className="px-5 py-2.5 bg-primary text-white font-bold rounded-xl text-xs hover:bg-primary-hover transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
           >
-            <Plus className="w-4 h-4" /> Create Flow
+            <Plus className="w-4 h-4" /> Create Automation
           </button>
         </div>
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4">
+            {paginatedFlowGroups.map((group) => (
+              <FlowCard
+                key={group.flowGroupId}
+                group={group}
+                onEdit={startEditFlow}
+                onClone={startCloneFlow}
+                onToggle={handleToggleGroup}
+                onDelete={triggerDeleteGroup}
+                showPostLink={group.scope === 'single'}
+                isToggling={togglingGroupId === group.flowGroupId}
+              />
+            ))}
+          </div>
 
-          {/* ── All Posts Section ── */}
-          <FlowSection
-            title="All Posts"
-            description="Applies to every post on your account"
-            icon={Globe}
-            iconBg="bg-purple-50"
-            iconColor="text-purple-600"
-            flows={allPostsFlows}
-            onEdit={startEditFlow}
-            onClone={startCloneFlow}
-            onToggle={handleToggleGroup}
-            onDelete={triggerDeleteGroup}
-            emptyLabel="No all-post automations"
-            onAdd={() => startNewFlow('all')}
-            togglingGroupId={togglingGroupId}
-          />
-
-          {/* ── Upcoming New Post Section ── */}
-          <FlowSection
-            title="Upcoming New Post"
-            description="Activates only for your next published post"
-            icon={Sparkles}
-            iconBg="bg-emerald-50"
-            iconColor="text-emerald-600"
-            flows={upcomingFlows}
-            onEdit={startEditFlow}
-            onClone={startCloneFlow}
-            onToggle={handleToggleGroup}
-            onDelete={triggerDeleteGroup}
-            emptyLabel="No upcoming post automations"
-            onAdd={() => startNewFlow('next')}
-            togglingGroupId={togglingGroupId}
-          />
-
-          {/* ── Single Post Section ── */}
-          <FlowSection
-            title="Single Post"
-            description="Targeted to one specific Instagram post"
-            icon={ImageIcon}
-            iconBg="bg-blue-50"
-            iconColor="text-blue-600"
-            flows={singlePostFlows}
-            onEdit={startEditFlow}
-            onClone={startCloneFlow}
-            onToggle={handleToggleGroup}
-            onDelete={triggerDeleteGroup}
-            emptyLabel={searchQuery ? "No matching flows found" : "No single-post automations"}
-            onAdd={() => startNewFlow('single')}
-            showPostLink
-            togglingGroupId={togglingGroupId}
-          />
-
-          {/* Pagination Controls */}
-          {allSinglePostFlows.length > 10 && (
-            <div className="flex items-center justify-between mt-6 px-4 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
-              <p className="text-sm text-slate-500">
-                Showing <span className="font-semibold text-slate-700">{(currentPage - 1) * 10 + 1}</span> to <span className="font-semibold text-slate-700">{Math.min(currentPage * 10, allSinglePostFlows.length)}</span> of <span className="font-semibold text-slate-700">{allSinglePostFlows.length}</span> single post flows
+          {/* Pagination Bar */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+              <p className="text-xs text-slate-500 font-medium">
+                Showing <span className="font-bold text-slate-900">{(currentPage - 1) * flowsPerPage + 1}</span> to{' '}
+                <span className="font-bold text-slate-900">{Math.min(currentPage * flowsPerPage, currentTabGroups.length)}</span> of{' '}
+                <span className="font-bold text-slate-900">{currentTabGroups.length}</span> automations
               </p>
               <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="p-2 rounded-xl hover:bg-slate-50 text-slate-600 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-1"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-3.5 h-3.5" /> Previous
                 </button>
-                <div className="px-3 py-1 bg-slate-50 rounded-lg text-sm font-semibold text-slate-700 border border-slate-100">
-                  {currentPage} / {totalSinglePages}
-                </div>
-                <button 
-                  onClick={() => setCurrentPage(p => Math.min(totalSinglePages, p + 1))}
-                  disabled={currentPage === totalSinglePages}
-                  className="p-2 rounded-xl hover:bg-slate-50 text-slate-600 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                <span className="text-xs font-bold text-slate-600 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => (p < totalPages ? p + 1 : p))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-1"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  Next <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           )}
-
         </div>
       )}
 
