@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { matchesKeywordInSentence, isAppreciationComment, DEFAULT_APPRECIATION_REPLIES } from '@/lib/matching';
 import { analyzeCommentWithAI } from '@/lib/ai';
 
-// Version 2.2 - Production Ready Instagram Webhook with Self-Reply Loop Guard
+// Version 2.3 - Production Ready Instagram Webhook with Per-User Per-Post DM Limit (1 DM Max)
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'silqueen_automation_2026';
 const INSTAGRAM_BUSINESS_ID = '17841462007877659';
 
@@ -83,6 +83,7 @@ async function processWebhook(body: any) {
       const commentId = commentData.id;
       const fromId = commentData.from.id;
       const fromUsername = (commentData.from.username || '').toLowerCase();
+      const mediaId = commentData.media?.id || 'MEDIA_GLOBAL';
 
       // CRITICAL GUARD: Skip processing comments/replies created by the Business Page itself!
       if (fromId === INSTAGRAM_BUSINESS_ID || fromUsername === 'silqueendesigns') {
@@ -90,7 +91,7 @@ async function processWebhook(body: any) {
         continue;
       }
 
-      console.log(`Processing comment [ID: ${commentId}]: "${rawCommentText}" from @${commentData.from.username}`);
+      console.log(`Processing comment [ID: ${commentId}]: "${rawCommentText}" from @${commentData.from.username} on Media ID: ${mediaId}`);
 
       // STEP A: Instant In-memory Deduplication Check
       if (processedCommentIds.has(commentId)) {
@@ -126,7 +127,6 @@ async function processWebhook(body: any) {
       });
 
       let flow: any = null;
-      const mediaId = commentData.media?.id;
       let mediaShortcode: string | null = null;
 
       if (matchedFlows.length > 0) {
@@ -232,13 +232,42 @@ async function processWebhook(body: any) {
         }
       }
 
-      // Send DM (with Follow Verification)
+      // Send DM (with Follow Verification & Per-User Per-Post Rate Limit)
       if (flow.response_dm) {
+        const userHandle = commentData.from.username || fromUsername;
+        let alreadySentDM = false;
+
         try {
-          await sendInstagramDM(commentId, flow.response_dm, fromId);
-          console.log('DM sent ✅');
-        } catch (err) {
-          console.error('Failed to send DM:', err);
+          const { data: userPostLogs } = await supabase
+            .from('automation_logs')
+            .select('id')
+            .eq('sender_handle', userHandle)
+            .eq('instagram_post_id', `DM_${mediaId}`)
+            .limit(1);
+
+          if (userPostLogs && userPostLogs.length > 0) {
+            alreadySentDM = true;
+          }
+        } catch (e) {}
+
+        if (alreadySentDM) {
+          console.log(`Per-user DM limit: User @${userHandle} already received DM for post ${mediaId}. Skipping 2nd DM.`);
+        } else {
+          try {
+            await sendInstagramDM(commentId, flow.response_dm, fromId);
+            console.log('DM sent ✅');
+
+            // Log DM delivered for this specific user + post combination
+            await supabase.from('automation_logs').insert([{
+              flow_id: flow.id,
+              instagram_post_id: `DM_${mediaId}`,
+              sender_handle: userHandle,
+              action_taken: 'dm_sent_to_user',
+              status: 'processed'
+            }]);
+          } catch (err) {
+            console.error('Failed to send DM:', err);
+          }
         }
       }
     }
