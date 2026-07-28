@@ -77,16 +77,16 @@ export default function AnalyticsPage() {
 
     const { data, error } = await supabase
       .from('automation_logs')
-      .select('*')
+      .select('*, automation_flows(*)')
       .gte('created_at', from)
       .lte('created_at', to)
       .order('created_at', { ascending: false })
       .limit(200);
 
     if (!error && data) {
-      // Filter out raw webhook noise
+      // Filter out internal system logs and tracking noise
       const filtered = data.filter(
-        (l) => l.action_taken !== 'RAW_WEBHOOK_RECEIVED'
+        (l) => l.action_taken !== 'RAW_WEBHOOK_RECEIVED' && l.action_taken !== 'dm_sent_to_user'
       );
       setLogs(filtered);
     }
@@ -133,9 +133,25 @@ export default function AnalyticsPage() {
 
   const getActionLabel = (action: string) => {
     if (action === 'both') return 'Comment + DM';
-    if (action === 'comment') return 'Comment Reply';
-    if (action === 'dm') return 'DM Sent';
+    if (action === 'comment_only' || action === 'comment') return 'Comment Reply';
+    if (action === 'dm_only' || action === 'dm') return 'DM Sent';
+    if (action === 'customer_replied') return 'Customer Replied';
+    if (action === 'ai_comment_reply') return 'AI Comment Reply';
+    if (action === 'followup_sent') return '24h Follow-up DM';
     return action || '—';
+  };
+
+  const getDMPreview = (log: any) => {
+    const flow = log.automation_flows;
+    if (!flow || !flow.response_dm) return null;
+    let text = flow.response_dm;
+    if (text.startsWith('{') || text.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(text);
+        text = parsed.text || text;
+      } catch (e) {}
+    }
+    return text.length > 50 ? text.substring(0, 50) + '...' : text;
   };
 
   return (
@@ -351,9 +367,16 @@ export default function AnalyticsPage() {
                   </div>
 
                   {/* Action */}
-                  <div className="flex items-center gap-2">
-                    {getActionIcon(log.action_taken)}
-                    <span className="text-sm text-slate-600 font-medium">{getActionLabel(log.action_taken)}</span>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      {getActionIcon(log.action_taken)}
+                      <span className="text-sm text-slate-600 font-medium">{getActionLabel(log.action_taken)}</span>
+                    </div>
+                    {getDMPreview(log) && (
+                      <span className="text-[11px] text-slate-400 font-normal truncate max-w-xs mt-0.5" title={getDMPreview(log)!}>
+                        💬 "{getDMPreview(log)}"
+                      </span>
+                    )}
                   </div>
 
                   {/* Status */}

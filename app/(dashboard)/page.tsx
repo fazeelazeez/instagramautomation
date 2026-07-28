@@ -72,7 +72,8 @@ export default function Home() {
           ).length;
 
           setStats({ totalComments: comments, dmsSent: dms, automationHits: hits });
-          setRecentLogs(logs.slice(0, 6));
+          const userActivityLogs = logs.filter((l: any) => l.action_taken !== 'dm_sent_to_user');
+          setRecentLogs(userActivityLogs.slice(0, 6));
         }
       } catch (err) {
         console.error('Dashboard load error:', err);
@@ -105,8 +106,11 @@ export default function Home() {
 
   const getActionLabel = (action: string) => {
     if (action === 'both') return 'Comment + DM sent';
-    if (action === 'dm') return 'DM sent';
-    if (action === 'comment') return 'Comment replied';
+    if (action === 'dm_only' || action === 'dm') return 'DM sent';
+    if (action === 'comment_only' || action === 'comment') return 'Comment replied';
+    if (action === 'customer_replied') return 'Customer replied';
+    if (action === 'ai_comment_reply') return 'AI comment reply';
+    if (action === 'followup_sent') return '24h follow-up DM';
     return action;
   };
 
