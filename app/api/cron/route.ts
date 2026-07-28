@@ -9,13 +9,13 @@ export async function GET(request: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  console.log('Running daily cron job (24h DM Follow-ups & Token Refresh)...');
+  console.log('Running daily cron job (Smart 1-Time 24h DM Follow-ups & Token Refresh)...');
 
   let followUpsSent = 0;
   let tokenRefreshed = false;
 
   // -------------------------------------------------------------
-  // 1. Process 24-Hour DM Follow-ups
+  // 1. Process Smart 1-Time 24-Hour DM Follow-ups
   // -------------------------------------------------------------
   try {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -48,6 +48,7 @@ export async function GET(request: Request) {
 
         if (!followUpEnabled || !followUpText) continue;
 
+        // Rule 1: STRICT 1-TIME FOLLOW-UP CHECK
         const { data: existingFollowup } = await supabase
           .from('automation_logs')
           .select('id')
@@ -56,9 +57,26 @@ export async function GET(request: Request) {
           .eq('action_taken', 'followup_sent')
           .maybeSingle();
 
-        if (existingFollowup) continue;
+        if (existingFollowup) {
+          console.log(`Skipping 24h follow-up for ${recipientId}: Follow-up already sent 1-time!`);
+          continue;
+        }
 
-        console.log(`Sending daily 24h follow-up DM to ${recipientId}: "${followUpText}"`);
+        // Rule 2: AUTO-CANCEL IF CUSTOMER REPLIED
+        const { data: customerReply } = await supabase
+          .from('automation_logs')
+          .select('id')
+          .eq('sender_handle', recipientId)
+          .eq('action_taken', 'customer_replied')
+          .gte('created_at', log.created_at)
+          .maybeSingle();
+
+        if (customerReply) {
+          console.log(`Canceling 24h follow-up for ${recipientId}: Customer already replied!`);
+          continue;
+        }
+
+        console.log(`Sending 1-time 24h follow-up DM to ${recipientId}: "${followUpText}"`);
 
         try {
           await sendDirectMessageToUser(recipientId, followUpText);

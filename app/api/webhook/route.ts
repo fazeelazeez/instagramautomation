@@ -3,7 +3,7 @@ import { sendInstagramDM, sendDirectMessageToUser, replyToComment, getMediaShort
 import { supabase } from '@/lib/supabase';
 import { matchesKeywordInSentence, isAppreciationComment, DEFAULT_APPRECIATION_REPLIES } from '@/lib/matching';
 
-// Version 1.5 - Production Ready Instagram Webhook
+// Version 1.6 - Production Ready Instagram Webhook with Smart Follow-up Cancellation
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'silqueen_automation_2026';
 
 // In-memory set for ultra-fast webhook deduplication across concurrent executions
@@ -93,7 +93,6 @@ async function processWebhook(body: any) {
       }
       processedCommentIds.add(commentId);
 
-      // Clean up in-memory set size periodically (keep max 1000 items)
       if (processedCommentIds.size > 1000) {
         const firstKey = processedCommentIds.values().next().value;
         if (firstKey) processedCommentIds.delete(firstKey);
@@ -158,7 +157,6 @@ async function processWebhook(body: any) {
         const randomIndex = Math.floor(Math.random() * DEFAULT_APPRECIATION_REPLIES.length);
         const randomReply = DEFAULT_APPRECIATION_REPLIES[randomIndex];
 
-        // Reserve DB log BEFORE sending reply to prevent concurrent execution
         try {
           await supabase.from('automation_logs').insert([{
             flow_id: null,
@@ -185,7 +183,6 @@ async function processWebhook(body: any) {
 
       console.log('Flow matched! Executing:', flow.name);
 
-      // Reserve DB log BEFORE executing replies to prevent duplicate concurrent webhook retries
       try {
         await supabase.from('automation_logs').insert([{
           flow_id: flow.id,
@@ -229,6 +226,18 @@ async function processWebhook(body: any) {
       const messageText = (messageObj.text || '').trim();
       const messageId = messageObj.mid || ('DM_' + Date.now());
       console.log(`Processing DM/Story reply [ID: ${messageId}] from user ID ${senderId}: "${messageText}"`);
+
+      // Log customer reply event so 24h follow-up is automatically canceled!
+      try {
+        await supabase.from('automation_logs').insert([{
+          flow_id: null,
+          instagram_post_id: 'USER_REPLIED_' + Date.now(),
+          sender_handle: senderId,
+          action_taken: 'customer_replied',
+          status: 'processed'
+        }]);
+        console.log(`Log created: customer_replied for user ID ${senderId} (cancels 24h follow-up) ✅`);
+      } catch (e) {}
 
       if (!messageText) continue;
 
