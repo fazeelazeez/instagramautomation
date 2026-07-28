@@ -2,12 +2,8 @@
   "framework": "nextjs",
   "crons": [
     {
-      "path": "/api/cron/followup",
+      "path": "/api/cron",
       "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/refresh-token",
-      "schedule": "0 0 1,15 * *"
     }
   ]
 }
