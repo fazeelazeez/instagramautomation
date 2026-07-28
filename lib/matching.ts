@@ -1,6 +1,6 @@
 /**
  * Helper functions for Fuzzy String Matching, Sentence Keyword Detection,
- * Intent/Alias Mapping (PP, ethrayavum, etc.), and Appreciation Comment Detection.
+ * Intent/Alias Mapping (PP, how much, ethrayavum, etc.), and Appreciation Comment Detection.
  */
 
 // Calculate Levenshtein distance between two strings
@@ -33,19 +33,25 @@ export function levenshteinDistance(a: string, b: string): number {
 
 /**
  * Keyword Aliases & Shorthand mapping.
- * Maps primary flow triggers (PRICE, RATE, DETAILS) to shorthand & Manglish variants.
+ * Maps primary flow triggers (PRICE, RATE, DETAILS, HOW MUCH) to shorthand & Manglish variants.
  */
 export const KEYWORD_ALIASES: Record<string, string[]> = {
   PRICE: [
     'PP', 'PRC', 'PRZE', 'PRZ', 'AMT', 'AMOUNT', 'COST', 'VILA', 'VILAYENTHA',
-    'ETHRA', 'ETHRAYA', 'ETHRAYAVUM', 'ETHRAA', 'ETHRAAYI', 'PRICE PLS', 'PP PLS', 'RATE'
+    'ETHRA', 'ETHRAYA', 'ETHRAYAVUM', 'ETHRAA', 'ETHRAAYI', 'PRICE PLS', 'PP PLS', 'RATE',
+    'HOW MUCH', 'HOWMUCH', 'HM', 'HOW MUCH IS THIS', 'HOW MUCH PRICE', 'PRICE PLEASE'
   ],
   RATE: [
     'PP', 'PRC', 'PRZE', 'PRZ', 'AMT', 'AMOUNT', 'COST', 'VILA', 'VILAYENTHA',
-    'ETHRA', 'ETHRAYA', 'ETHRAYAVUM', 'ETHRAA', 'ETHRAAYI', 'PRICE PLS', 'PP PLS', 'PRICE'
+    'ETHRA', 'ETHRAYA', 'ETHRAYAVUM', 'ETHRAA', 'ETHRAAYI', 'PRICE PLS', 'PP PLS', 'PRICE',
+    'HOW MUCH', 'HOWMUCH', 'HM', 'HOW MUCH IS THIS', 'HOW MUCH PRICE', 'PRICE PLEASE'
   ],
   DETAILS: [
-    'DTL', 'DTAIL', 'DTAILS', 'DETAILS PLS', 'DTLS', 'INFO', 'DETAILS PLEASE'
+    'DTL', 'DTAIL', 'DTAILS', 'DETAILS PLS', 'DTLS', 'INFO', 'DETAILS PLEASE',
+    'HOW MUCH', 'HOWMUCH', 'HM', 'HOW MUCH IS THIS', 'PRICE', 'PP', 'RATE', 'ETHRA', 'ETHRAYA'
+  ],
+  'HOW MUCH': [
+    'PRICE', 'RATE', 'DETAILS', 'PP', 'PRC', 'COST', 'AMOUNT', 'AMT', 'ETHRA', 'ETHRAYA', 'ETHRAYAVUM', 'HM'
   ]
 };
 
@@ -59,8 +65,8 @@ export function isFuzzyMatch(word: string, targetKeyword: string): boolean {
   if (w === t) return true;
   if (w.length < 2 || t.length < 2) return false;
 
-  // Exact short shorthand (e.g. PP, PRC) should not be fuzzy matched loosely against long words
-  if (t === 'PP' || w === 'PP') return w === t;
+  // Exact short shorthand (e.g. PP, PRC, HM) should not be fuzzy matched loosely against long words
+  if (t === 'PP' || w === 'PP' || t === 'HM' || w === 'HM') return w === t;
 
   const distance = levenshteinDistance(w, t);
 
@@ -75,7 +81,7 @@ export function isFuzzyMatch(word: string, targetKeyword: string): boolean {
 }
 
 /**
- * Checks if text contains keyword as exact substring, alias (PP, ethraya, etc.), or fuzzy match within sentence.
+ * Checks if text contains keyword as exact substring, alias (PP, how much, ethraya, etc.), or fuzzy match within sentence.
  */
 export function matchesKeywordInSentence(text: string, targetKeyword: string): boolean {
   const textUpper = text.toUpperCase();
@@ -84,7 +90,7 @@ export function matchesKeywordInSentence(text: string, targetKeyword: string): b
   // 1. Direct substring match
   if (textUpper.includes(targetUpper)) return true;
 
-  // 2. Check Aliases (e.g., PP, PRC, ethraya for PRICE/RATE flows)
+  // 2. Check Aliases (e.g., HOW MUCH, PP, PRC, ethraya for PRICE/RATE/DETAILS flows)
   const aliases = KEYWORD_ALIASES[targetUpper] || [];
   const words = textUpper.split(/[\s,!?.-]+/).filter(Boolean);
 
@@ -95,7 +101,17 @@ export function matchesKeywordInSentence(text: string, targetKeyword: string): b
     }
   }
 
-  // 3. Tokenize and test each word fuzzy
+  // 3. Reverse Alias Check: If targetKeyword is inside an alias list (e.g., targetKeyword is "PRICE" and text contains "HOW MUCH")
+  for (const [primaryKey, aliasList] of Object.entries(KEYWORD_ALIASES)) {
+    if (aliasList.includes(targetUpper) || primaryKey === targetUpper) {
+      if (textUpper.includes(primaryKey)) return true;
+      for (const a of aliasList) {
+        if (textUpper.includes(a)) return true;
+      }
+    }
+  }
+
+  // 4. Tokenize and test each word fuzzy
   for (const word of words) {
     if (isFuzzyMatch(word, targetUpper)) {
       return true;
@@ -116,7 +132,7 @@ export const APPRECIATION_KEYWORDS = [
 export const APPRECIATION_EMOJIS = ['❤️', '😍', '🥰', '🔥', '👏', '🙌', '✨', '💖', '💕', '💯', '👌'];
 
 export const INQUIRY_KEYWORDS = [
-  'PRICE', 'DETAILS', 'RATE', 'COST', 'DM', 'BUY', 'ORDER', 'HOW MUCH',
+  'PRICE', 'DETAILS', 'RATE', 'COST', 'DM', 'BUY', 'ORDER', 'HOW MUCH', 'HOWMUCH', 'HM',
   'RS', 'RUPEES', 'ഡീറ്റെയിൽസ്', 'വില', 'PP', 'PRC', 'AMT', 'AMOUNT',
   'ETHRA', 'ETHRAYA', 'ETHRAYAVUM', 'ETHRAAYI', 'ETHRAA', 'VILA', 'VILAYENTHA'
 ];
