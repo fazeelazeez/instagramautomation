@@ -3,6 +3,7 @@ import { sendInstagramDM, sendDirectMessageToUser, replyToComment, getMediaShort
 import { supabase } from '@/lib/supabase';
 import { matchesKeywordInSentence, isAppreciationComment, DEFAULT_APPRECIATION_REPLIES } from '@/lib/matching';
 
+// Version 1.5 - Production Ready Instagram Webhook
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'silqueen_automation_2026';
 
 // In-memory set for ultra-fast webhook deduplication across concurrent executions
