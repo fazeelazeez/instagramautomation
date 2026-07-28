@@ -24,6 +24,8 @@ export default function Home() {
   const [flows, setFlows] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [flowPage, setFlowPage] = useState(1);
+  const flowPageSize = 5;
   const [activityPage, setActivityPage] = useState(1);
   const activityPageSize = 5;
   const [stats, setStats] = useState({
@@ -196,7 +198,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="space-y-3">
-                {flows.map((flow) => (
+                {flows.slice((flowPage - 1) * flowPageSize, flowPage * flowPageSize).map((flow) => (
                   <div key={flow.name} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-amber-50 rounded-full flex items-center justify-center">
@@ -223,6 +225,35 @@ export default function Home() {
                     </span>
                   </div>
                 ))}
+
+                {flows.length > flowPageSize && (
+                  <div className="flex items-center justify-between px-4 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                    <span className="text-xs text-slate-500 font-medium">
+                      Showing <span className="font-bold text-slate-900">{(flowPage - 1) * flowPageSize + 1}</span> to{' '}
+                      <span className="font-bold text-slate-900">{Math.min(flowPage * flowPageSize, flows.length)}</span> of{' '}
+                      <span className="font-bold text-slate-900">{flows.length}</span> automations
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setFlowPage((p) => Math.max(1, p - 1))}
+                        disabled={flowPage === 1}
+                        className="px-3 py-1 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" /> Previous
+                      </button>
+                      <span className="text-xs font-bold text-slate-600 px-2">
+                        Page {flowPage} of {Math.ceil(flows.length / flowPageSize)}
+                      </span>
+                      <button
+                        onClick={() => setFlowPage((p) => (p * flowPageSize < flows.length ? p + 1 : p))}
+                        disabled={flowPage * flowPageSize >= flows.length}
+                        className="px-3 py-1 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-1"
+                      >
+                        Next <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
