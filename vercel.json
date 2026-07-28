@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/followup",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/refresh-token",
+      "schedule": "0 0 1,15 * *"
     }
   ]
 }

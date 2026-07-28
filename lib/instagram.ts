@@ -1,4 +1,5 @@
-const PAGE_ACCESS_TOKEN = process.env.INSTAGRAM_PAGE_ACCESS_TOKEN;
+import { getAccessToken } from '@/lib/token';
+
 const INSTAGRAM_BUSINESS_ID = '17841462007877659'; // silqueendesigns
 
 /**
@@ -6,7 +7,8 @@ const INSTAGRAM_BUSINESS_ID = '17841462007877659'; // silqueendesigns
  */
 export async function getMediaShortcode(mediaId: string): Promise<string | null> {
   if (!mediaId) return null;
-  const url = `https://graph.instagram.com/v25.0/${mediaId}?fields=shortcode&access_token=${PAGE_ACCESS_TOKEN}`;
+  const token = await getAccessToken();
+  const url = `https://graph.instagram.com/v25.0/${mediaId}?fields=shortcode&access_token=${token}`;
   try {
     const response = await fetch(url);
     const data = await response.json();
@@ -22,8 +24,8 @@ export async function getMediaShortcode(mediaId: string): Promise<string | null>
  */
 export async function checkUserFollowsBusiness(userId: string): Promise<boolean> {
   if (!userId) return false;
-  // Graph API endpoint for user follow status
-  const url = `https://graph.instagram.com/v25.0/${userId}?fields=is_user_follow_business&access_token=${PAGE_ACCESS_TOKEN}`;
+  const token = await getAccessToken();
+  const url = `https://graph.instagram.com/v25.0/${userId}?fields=is_user_follow_business&access_token=${token}`;
   try {
     const response = await fetch(url);
     const data = await response.json();
@@ -33,25 +35,21 @@ export async function checkUserFollowsBusiness(userId: string): Promise<boolean>
   } catch (e) {
     console.error('Failed to check user follow status:', e);
   }
-  // Default to true on API error so we don't block legitimate users
   return true;
 }
 
 /**
  * Sends a Direct Message to an Instagram user triggered by their comment.
  * Using comment_id as recipient bypasses the 24-hour window restriction.
- * @param commentId - The ID of the comment that triggered this DM.
- * @param messageText - The text or JSON config to send.
- * @param userId - Optional user ID for follow verification.
  */
 export async function sendInstagramDM(commentId: string, messageText: string, userId?: string) {
+  const token = await getAccessToken();
   const url = `https://graph.instagram.com/v25.0/${INSTAGRAM_BUSINESS_ID}/messages`;
 
   let textToSend = messageText;
   let quickRepliesPayload: any[] | undefined = undefined;
   let requireFollow = false;
 
-  // Safe parse JSON if it looks like JSON
   if (messageText && (messageText.trim().startsWith('{') || messageText.trim().startsWith('['))) {
     try {
       const parsed = JSON.parse(messageText);
@@ -59,7 +57,6 @@ export async function sendInstagramDM(commentId: string, messageText: string, us
         textToSend = parsed.text || '';
         requireFollow = !!parsed.requireFollow;
 
-        // Greeting Format quick replies
         if (parsed.greetingFormat === 'quick_reply' && parsed.quickReplyLabel) {
           quickRepliesPayload = [
             {
@@ -75,7 +72,6 @@ export async function sendInstagramDM(commentId: string, messageText: string, us
     }
   }
 
-  // Follow Verification check
   if (requireFollow && userId) {
     const isFollowing = await checkUserFollowsBusiness(userId);
     if (!isFollowing) {
@@ -105,7 +101,7 @@ export async function sendInstagramDM(commentId: string, messageText: string, us
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${PAGE_ACCESS_TOKEN}`
+      'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify(payload)
   });
@@ -120,9 +116,10 @@ export async function sendInstagramDM(commentId: string, messageText: string, us
 }
 
 /**
- * Sends a Direct Message to an Instagram User by Recipient User ID (for Story Replies or DMs).
+ * Sends a Direct Message to an Instagram User by Recipient User ID.
  */
 export async function sendDirectMessageToUser(recipientId: string, messageText: string) {
+  const token = await getAccessToken();
   const url = `https://graph.instagram.com/v25.0/${INSTAGRAM_BUSINESS_ID}/messages`;
 
   let textToSend = messageText;
@@ -146,7 +143,7 @@ export async function sendDirectMessageToUser(recipientId: string, messageText: 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${PAGE_ACCESS_TOKEN}`
+      'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify(payload)
   });
@@ -162,14 +159,11 @@ export async function sendDirectMessageToUser(recipientId: string, messageText: 
 
 /**
  * Sends a public reply to an Instagram comment via Instagram API.
- * Supports random template selection using "|||" delimiter.
- * @param commentId - The ID of the comment to reply to.
- * @param messageText - The text (or "|||" separated templates) of the reply.
  */
 export async function replyToComment(commentId: string, messageText: string) {
+  const token = await getAccessToken();
   let replyText = messageText;
 
-  // Random template selection if multiple templates separated by |||
   if (messageText && messageText.includes('|||')) {
     const templates = messageText.split('|||').map(t => t.trim()).filter(Boolean);
     if (templates.length > 0) {
@@ -189,7 +183,7 @@ export async function replyToComment(commentId: string, messageText: string) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${PAGE_ACCESS_TOKEN}`
+      'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify(payload)
   });
