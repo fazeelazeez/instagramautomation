@@ -501,7 +501,7 @@ export default function AnalyticsPage() {
                       <MessageSquare className="w-4 h-4 text-blue-500" /> Public Comment Reply Sent
                     </span>
                     <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl text-slate-800 text-sm font-medium leading-relaxed">
-                      "{selectedLog.automation_flows.response_comment}"
+                      "{selectedLog.automation_flows.response_comment.split('|||')[0].trim()}"
                     </div>
                   </div>
                 )}
