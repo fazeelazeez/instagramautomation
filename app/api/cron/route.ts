@@ -24,7 +24,9 @@ export async function GET(request: Request) {
       .from('automation_logs')
       .select('*, automation_flows(*)')
       .lte('created_at', twentyFourHoursAgo)
-      .eq('status', 'processed');
+      .eq('status', 'processed')
+      .order('created_at', { ascending: false })
+      .limit(30);
 
     if (!logsError && logs) {
       for (const log of logs) {
@@ -110,7 +112,9 @@ export async function GET(request: Request) {
       .from('automation_logs')
       .select('*')
       .eq('action_taken', 'DIRECT_SHARE_PENDING_20M')
-      .lte('created_at', twentyMinsAgo);
+      .lte('created_at', twentyMinsAgo)
+      .order('created_at', { ascending: false })
+      .limit(30);
 
     // Strictly enforce >= 20 minutes (1,200,000 ms) in JS Epoch time
     const validPendingLogs = (pendingLogs || []).filter((log: any) => {
