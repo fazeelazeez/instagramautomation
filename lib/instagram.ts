@@ -98,19 +98,9 @@ export async function sendInstagramDM(commentId: string, messageText: string, us
   }
 
   const payload: any = {
-    recipient: { comment_id: commentId }
+    recipient: { comment_id: commentId },
+    message: { text: textToSend }
   };
-
-  if (quickRepliesPayload) {
-    payload.message = {
-      text: textToSend,
-      quick_replies: quickRepliesPayload
-    };
-  } else {
-    payload.message = {
-      text: textToSend
-    };
-  }
 
   console.log('Sending DM via comment_id:', commentId, JSON.stringify(payload));
 

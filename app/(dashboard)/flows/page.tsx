@@ -970,31 +970,9 @@ export default function FlowsPage() {
 
                       {enableDM && (
                         <div className="space-y-4 pt-4 border-t border-slate-100">
-                          {/* Greeting format */}
-                          <div>
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">GREETING FORMAT</span>
-                            <div className="bg-slate-100 p-1 rounded-2xl flex gap-1 w-fit">
-                              {[
-                                { val: 'card', icon: FileText, label: 'Card' },
-                                { val: 'quick_reply', icon: MessageSquare, label: 'Quick Reply' }
-                              ].map(({ val, icon: Icon, label }) => (
-                                <button
-                                  key={val}
-                                  type="button"
-                                  onClick={() => setGreetingFormat(val as any)}
-                                  className={`px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                                    greetingFormat === val ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
-                                  }`}
-                                >
-                                  <Icon className="w-3.5 h-3.5" /> {label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
                           <textarea
                             placeholder="Write your automated message here..."
-                            className="w-full p-4 bg-white border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 text-slate-700 text-sm h-32 resize-none"
+                            className="w-full p-4 bg-white border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 text-slate-700 text-sm h-36 resize-y font-normal leading-relaxed"
                             value={dmText}
                             onChange={(e) => setDMText(e.target.value.substring(0, 1000))}
                           />
@@ -1002,21 +980,6 @@ export default function FlowsPage() {
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CHARACTER COUNT</span>
                             <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{dmText.length}/1000</span>
                           </div>
-
-                          {greetingFormat === 'quick_reply' && (
-                            <div className="space-y-2">
-                              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">QUICK REPLY LABEL</span>
-                              <input
-                                type="text"
-                                maxLength={20}
-                                placeholder="Show me more"
-                                className="w-full p-3 bg-white border border-slate-100 rounded-xl outline-none text-slate-700 text-sm text-center font-bold text-primary max-w-md focus:ring-2 focus:ring-primary/20"
-                                value={quickReplyLabel}
-                                onChange={(e) => setQuickReplyLabel(e.target.value)}
-                              />
-                              <p className="text-[10px] font-medium text-slate-400">Max 20 characters.</p>
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
