@@ -339,6 +339,23 @@ async function processWebhook(body: any) {
           return false;
         });
 
+        // 1-Hour Deduplication Guard: Check if prompt/DM was already sent for this share within last 1 hour
+        try {
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+          const { data: recentDMs } = await supabase
+            .from('automation_logs')
+            .select('id')
+            .or(`sender_handle.eq.${senderId},sender_handle.eq.${senderHandle}`)
+            .eq('action_taken', 'DIRECT_SHARE_PENDING_20M')
+            .gte('created_at', oneHourAgo)
+            .limit(1);
+
+          if (recentDMs && recentDMs.length > 0) {
+            console.log(`User @${senderHandle} (${senderId}) already received a share prompt within last 1 hour. Skipping duplicate DM prompt.`);
+            continue;
+          }
+        } catch (e) {}
+
         const promptMessage = `Thanks for reaching out! ✨ Please follow our page @silqueendesigns and comment "DETAILS" or "PRICE" on that reel to get instant pricing details!`;
 
         try {
@@ -359,49 +376,10 @@ async function processWebhook(body: any) {
         continue;
       }
 
-      // Guard: Check if user has a pending Reel Share within last 2 minutes
-      try {
-        const twoMinsAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-        const { data: recentPendingShare } = await supabase
-          .from('automation_logs')
-          .select('id')
-          .or(`sender_handle.eq.${senderId},sender_handle.eq.${senderHandle}`)
-          .eq('action_taken', 'DIRECT_SHARE_PENDING_20M')
-          .gte('created_at', twoMinsAgo)
-          .limit(1);
-
-        if (recentPendingShare && recentPendingShare.length > 0) {
-          console.log(`User @${senderHandle} (${senderId}) has a pending Reel Share within last 2m. Skipping instant DM response.`);
-          continue;
-        }
-      } catch (e) {}
-
-      let flow: any = matchedFlows[0];
-      if (!flow) {
-        console.log(`No active flow matched for DM: "${messageText}"`);
-        continue;
-      }
-
-      console.log('DM Flow matched! Replying to user:', flow.name);
-
-      try {
-        await supabase.from('automation_logs').insert([{
-          flow_id: flow.id,
-          instagram_post_id: messageId,
-          sender_handle: senderHandle,
-          action_taken: 'dm_only',
-          status: 'processed'
-        }]);
-      } catch (e) {}
-
-      if (flow.response_dm) {
-        try {
-          await sendDirectMessageToUser(senderId, flow.response_dm);
-          console.log('Story Reply / DM sent ✅');
-        } catch (dmErr) {
-          console.error('Failed to send Story Reply DM:', dmErr);
-        }
-      }
+      // Boutique DM Rule: For general DMs, text messages, reference images, or general questions,
+      // DO NOT send automated DM replies! Leave the chat clean for manual boutique owner conversation.
+      console.log(`Boutique rule applied: General DM / reference image from @${senderHandle} ("${messageText}"). Skipping automated DM to allow manual response.`);
+      continue;
     }
   }
 }
