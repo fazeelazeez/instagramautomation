@@ -325,6 +325,20 @@ async function processWebhook(body: any) {
       if (isShareEvent) {
         console.log(`Reel/Post Share detected in DM from @${senderHandle}. Shared URL: ${sharedUrl}`);
 
+        // Try matching exact single-post flow for this shared reel shortcode
+        const shortcodeMatch = sharedUrl.match(/(?:reel|p)\/([A-Za-z0-9_-]+)/i);
+        const shortcode = shortcodeMatch ? shortcodeMatch[1] : '';
+
+        const matchedReelFlow = activeFlows.find((f: any) => {
+          try {
+            const parsed = JSON.parse(f.name);
+            if (shortcode && (parsed.postId?.includes(shortcode) || parsed.postUrl?.includes(shortcode))) {
+              return true;
+            }
+          } catch (e) {}
+          return false;
+        });
+
         const promptMessage = `Thanks for reaching out! ✨ Please follow our page @silqueendesigns and comment "DETAILS" or "PRICE" on that reel to get instant pricing details!`;
 
         try {
@@ -332,13 +346,13 @@ async function processWebhook(body: any) {
           console.log(`Step 1 Prompt DM sent to @${senderHandle} for shared reel ✅`);
 
           await supabase.from('automation_logs').insert([{
-            flow_id: null,
+            flow_id: matchedReelFlow?.id || null,
             instagram_post_id: sharedUrl || ('SHARED_' + Date.now()),
             sender_handle: senderId, // Must be numeric IGSID for Meta Send API
             action_taken: 'DIRECT_SHARE_PENDING_20M',
             status: 'processed'
           }]);
-          console.log(`Logged DIRECT_SHARE_PENDING_20M for senderId: ${senderId} (@${senderHandle}) ✅`);
+          console.log(`Logged DIRECT_SHARE_PENDING_20M for senderId: ${senderId} (@${senderHandle}) with flow_id: ${matchedReelFlow?.id || 'null'} ✅`);
         } catch (promptErr) {
           console.error('Failed to send Step 1 prompt DM:', promptErr);
         }

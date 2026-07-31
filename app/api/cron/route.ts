@@ -179,7 +179,11 @@ export async function GET(request: Request) {
         const shortcode = shortcodeMatch ? shortcodeMatch[1] : '';
 
         let matchedFlow: any = null;
-        if (shortcode) {
+        if (log.flow_id) {
+          matchedFlow = parsedFlows.find((f: any) => f.id === log.flow_id);
+        }
+
+        if (!matchedFlow && shortcode) {
           matchedFlow = parsedFlows.find((f: any) =>
             f._meta.scope === 'single' &&
             (f._meta.postId?.includes(shortcode) || f._meta.postUrl?.includes(shortcode))
