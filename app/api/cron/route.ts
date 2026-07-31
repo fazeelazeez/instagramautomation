@@ -152,14 +152,23 @@ export async function GET(request: Request) {
           }
         }
 
+        // Cancel 20m fallback if customer commented OR is actively chatting in DM!
         const { data: userActivity } = await supabase
           .from('automation_logs')
           .select('id')
           .or(`sender_handle.eq.${log.sender_handle},sender_handle.eq.${recipientId}`)
           .gte('created_at', log.created_at)
-          .in('action_taken', ['both', 'comment_only', 'DIRECT_SHARE_COMPLETED_20M']);
+          .in('action_taken', [
+            'both',
+            'comment_only',
+            'customer_replied',
+            'dm_only',
+            'dm_sent_to_user',
+            'DIRECT_SHARE_COMPLETED_20M'
+          ]);
 
         if (userActivity && userActivity.length > 0) {
+          console.log(`User ${recipientId} already commented or in active DM chat. Cancelling 20m fallback.`);
           await supabase.from('automation_logs').update({ action_taken: 'DIRECT_SHARE_COMMENTED_CANCELLED' }).eq('id', log.id);
           continue;
         }
