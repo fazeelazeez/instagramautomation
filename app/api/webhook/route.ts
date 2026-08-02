@@ -49,8 +49,8 @@ async function processWebhook(body: any) {
     }]);
   } catch (logErr) {}
 
-  if (body.object !== 'instagram') {
-    console.log('Not an Instagram event, skipping.');
+  if (body.object !== 'instagram' && body.object !== 'page') {
+    console.log('Not an Instagram or Page event, skipping.');
     return;
   }
 
@@ -68,30 +68,32 @@ async function processWebhook(body: any) {
   for (const entry of (body.entry || [])) {
 
     // -------------------------------------------------------------
-    // 1. Process Instagram Comments (entry.changes)
+    // 1. Process Comments (Instagram entry.changes comments & Facebook Page entry.changes feed)
     // -------------------------------------------------------------
     for (const change of (entry.changes || [])) {
-      if (change.field !== 'comments') continue;
+      const isIgComment = change.field === 'comments';
+      const isFbComment = change.field === 'feed' && change.value?.item === 'comment' && (change.value?.verb === 'add' || !change.value?.verb);
+      if (!isIgComment && !isFbComment) continue;
 
       const commentData = change.value;
-      if (!commentData?.text || !commentData?.from?.id) {
+      const rawCommentText = (isIgComment ? commentData?.text : commentData?.message || '').trim();
+      const commentId = isIgComment ? commentData?.id : commentData?.comment_id || `FB_${Date.now()}`;
+      const fromId = isIgComment ? commentData?.from?.id : commentData?.sender_id;
+      const fromUsername = isIgComment ? (commentData?.from?.username || '').toLowerCase() : (commentData?.sender_name || fromId || '').toLowerCase();
+      const mediaId = isIgComment ? (commentData?.media?.id || 'MEDIA_GLOBAL') : (commentData?.post_id ? commentData.post_id.split('_').pop() : 'MEDIA_GLOBAL');
+
+      if (!rawCommentText || !fromId) {
         console.log('Comment data incomplete, skipping.');
         continue;
       }
 
-      const rawCommentText = commentData.text.trim();
-      const commentId = commentData.id;
-      const fromId = commentData.from.id;
-      const fromUsername = (commentData.from.username || '').toLowerCase();
-      const mediaId = commentData.media?.id || 'MEDIA_GLOBAL';
-
       // CRITICAL GUARD: Skip processing comments/replies created by the Business Page itself!
-      if (fromId === INSTAGRAM_BUSINESS_ID || fromUsername === 'silqueendesigns') {
+      if (fromId === INSTAGRAM_BUSINESS_ID || fromUsername === 'silqueendesigns' || fromUsername.includes('silqueen')) {
         console.log(`Skipping self-comment webhook from business page (@${fromUsername} / ID: ${fromId})`);
         continue;
       }
 
-      console.log(`Processing comment [ID: ${commentId}]: "${rawCommentText}" from @${commentData.from.username} on Media ID: ${mediaId}`);
+      console.log(`Processing comment [ID: ${commentId}]: "${rawCommentText}" from @${fromUsername} on Media ID: ${mediaId}`);
 
       // STEP A: Instant In-memory Deduplication Check
       if (processedCommentIds.has(commentId)) {
