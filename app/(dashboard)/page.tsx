@@ -374,7 +374,7 @@ export default function Home() {
                       <div className="flex-grow min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <p className="font-semibold text-slate-900 text-xs truncate">
-                            @{log.sender_handle || 'unknown'}
+                            {log.sender_handle?.match(/^\d+$/) ? `ID: ${log.sender_handle}` : `@${log.sender_handle || 'unknown'}`}
                           </p>
                           <span className={`shrink-0 ${log.status === 'processed' ? 'text-emerald-500' : 'text-slate-300'}`}>
                             {log.status === 'processed'

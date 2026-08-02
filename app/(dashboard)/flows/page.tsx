@@ -188,6 +188,8 @@ export default function FlowsPage() {
   const [followUp, setFollowUp] = useState(false);
   const [followUpText, setFollowUpText] = useState("Hey, just checking in to see if you got a chance to check the link? Let me know if you have any questions! 💬");
 
+  // Multi-step Wizard & Loader state
+  const [saving, setSaving] = useState(false);
   const [successModal, setSuccessModal] = useState({ show: false, title: '', message: '' });
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [togglingGroupId, setTogglingGroupId] = useState<string | null>(null);
@@ -301,61 +303,69 @@ export default function FlowsPage() {
       return;
     }
 
-    const resolvedFlowGroupId = editingGroupId || `group_${Date.now()}`;
-    const finalName = flowName.trim();
+    setSaving(true);
+    try {
+      const resolvedFlowGroupId = editingGroupId || `group_${Date.now()}`;
+      const finalName = flowName.trim();
 
-    let keywords: string[] = ['*'];
-    if (matchType === 'specific' && keywordInput.trim()) {
-      keywords = keywordInput.split(',').map(k => k.trim().toUpperCase()).filter(Boolean);
-    }
-    if (keywords.length === 0) keywords = ['*'];
+      let keywords: string[] = ['*'];
+      if (matchType === 'specific' && keywordInput.trim()) {
+        keywords = keywordInput.split(',').map(k => k.trim().toUpperCase()).filter(Boolean);
+      }
+      if (keywords.length === 0) keywords = ['*'];
 
-    const nameMeta = JSON.stringify({
-      flowGroupId: resolvedFlowGroupId,
-      name: finalName,
-      scope: selectedScope,
-      postId: selectedScope === 'single' ? instagramLink.trim() : null,
-      facebookUrl: selectedScope === 'single' ? facebookLink.trim() : null
-    });
+      const nameMeta = JSON.stringify({
+        flowGroupId: resolvedFlowGroupId,
+        name: finalName,
+        scope: selectedScope,
+        postId: selectedScope === 'single' ? instagramLink.trim() : null,
+        facebookUrl: selectedScope === 'single' ? facebookLink.trim() : null
+      });
 
-    const joinedComments = enableCommentReply ? commentTemplates.join('|||') : '';
-    const dmConfig = enableDM ? JSON.stringify({
-      text: dmText,
-      greetingFormat,
-      quickReplyLabel,
-      requireFollow,
-      followUp,
-      followUpText: followUp ? followUpText : ''
-    }) : '';
+      const joinedComments = enableCommentReply ? commentTemplates.join('|||') : '';
+      const dmConfig = enableDM ? JSON.stringify({
+        text: dmText,
+        greetingFormat,
+        quickReplyLabel,
+        requireFollow,
+        followUp,
+        followUpText: followUp ? followUpText : ''
+      }) : '';
 
-    if (editingGroupId) {
-      const groupToDelete = flowGroups.find(g => g.flowGroupId === editingGroupId);
-      if (groupToDelete && groupToDelete.dbFlows) {
-        for (const f of groupToDelete.dbFlows) {
-          await deleteFlow(f.id);
+      if (editingGroupId) {
+        const groupToDelete = flowGroups.find(g => g.flowGroupId === editingGroupId);
+        if (groupToDelete && groupToDelete.dbFlows) {
+          for (const f of groupToDelete.dbFlows) {
+            await deleteFlow(f.id);
+          }
         }
       }
-    }
 
-    let firstResult: any = null;
-    for (const keyword of keywords) {
-      const result = await createFlow({ name: nameMeta, keyword, comment: joinedComments, dm: dmConfig });
-      if (!firstResult) firstResult = result;
-    }
+      let firstResult: any = null;
+      for (const keyword of keywords) {
+        const result = await createFlow({ name: nameMeta, keyword, comment: joinedComments, dm: dmConfig });
+        if (!firstResult) firstResult = result;
+      }
 
-    if (firstResult && firstResult.success) {
-      const rawFlows = await getFlows();
-      setFlowGroups(groupFlows(rawFlows));
-      closeWizard();
-      setSuccessModal({
-        show: true,
-        title: editingGroupId ? 'Automation Updated!' : 'Automation Created!',
-        message: editingGroupId
-          ? `Your changes to "${finalName}" have been saved.`
-          : `"${finalName}" is now active and monitoring comments.`
-      });
-    } else {
-      alert('Failed to save automation flow.');
+      if (firstResult && firstResult.success) {
+        const rawFlows = await getFlows();
+        setFlowGroups(groupFlows(rawFlows));
+        closeWizard();
+        setSuccessModal({
+          show: true,
+          title: editingGroupId ? 'Automation Updated!' : 'Automation Created!',
+          message: editingGroupId
+            ? `Your changes to "${finalName}" have been saved.`
+            : `"${finalName}" is now active and monitoring comments.`
+        });
+      } else {
+        alert('Failed to save automation flow.');
+      }
+    } catch (err) {
+      console.error('Failed to save flow:', err);
+      alert('An error occurred while saving.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1177,9 +1187,20 @@ export default function FlowsPage() {
                 ) : (
                   <button
                     onClick={handleSaveFlow}
-                    className="flex-grow py-3 bg-primary text-white hover:bg-primary-hover font-bold rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-[0.98]"
+                    disabled={saving}
+                    className="flex-grow py-3 bg-primary text-white hover:bg-primary-hover font-bold rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Check className="w-4 h-4" /> {editingGroupId ? 'Update Automation' : 'Save & Activate'}
+                    {saving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>{editingGroupId ? 'Updating Automation...' : 'Saving & Activating...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>{editingGroupId ? 'Update Automation' : 'Save & Activate'}</span>
+                      </>
+                    )}
                   </button>
                 )}
               </div>

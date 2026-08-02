@@ -25,6 +25,7 @@ export async function GET(request: Request) {
       .select('*, automation_flows(*)')
       .lte('created_at', twentyFourHoursAgo)
       .eq('status', 'processed')
+      .in('action_taken', ['both', 'dm_only'])
       .order('created_at', { ascending: false })
       .limit(30);
 
@@ -50,16 +51,15 @@ export async function GET(request: Request) {
 
         if (!followUpEnabled || !followUpText) continue;
 
-        // Rule 1: STRICT 1-TIME FOLLOW-UP CHECK
+        // Rule 1: STRICT 1-TIME FOLLOW-UP CHECK FOR USER
         const { data: existingFollowup } = await supabase
           .from('automation_logs')
           .select('id')
-          .eq('flow_id', flow.id)
-          .eq('sender_handle', recipientId)
+          .or(`sender_handle.eq.${recipientId},sender_handle.eq.${log.sender_handle}`)
           .eq('action_taken', 'followup_sent')
-          .maybeSingle();
+          .limit(1);
 
-        if (existingFollowup) {
+        if (existingFollowup && existingFollowup.length > 0) {
           console.log(`Skipping 24h follow-up for ${recipientId}: Follow-up already sent 1-time!`);
           continue;
         }

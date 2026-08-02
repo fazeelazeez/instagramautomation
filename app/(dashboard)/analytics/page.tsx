@@ -306,7 +306,7 @@ export default function AnalyticsPage() {
                 <div className="md:hidden flex flex-col gap-1">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-900 text-sm">
-                      @{log.sender_handle || 'unknown'}
+                      {log.sender_handle?.match(/^\d+$/) ? `ID: ${log.sender_handle}` : `@${log.sender_handle || 'unknown'}`}
                     </span>
                     <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
                       log.status === 'processed'
@@ -332,7 +332,7 @@ export default function AnalyticsPage() {
                       {(log.sender_handle || '?')[0]}
                     </div>
                       <span className="font-bold text-slate-900 text-sm truncate">
-                        @{log.sender_handle || 'unknown'}
+                        {log.sender_handle?.match(/^\d+$/) ? `ID: ${log.sender_handle}` : `@${log.sender_handle || 'unknown'}`}
                       </span>
                   </div>
 
