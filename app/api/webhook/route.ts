@@ -72,7 +72,7 @@ async function processWebhook(body: any) {
     // -------------------------------------------------------------
     for (const change of (entry.changes || [])) {
       const isIgComment = change.field === 'comments';
-      const isFbComment = change.field === 'feed' && change.value?.item === 'comment' && (change.value?.verb === 'add' || !change.value?.verb);
+      const isFbComment = change.field === 'feed' && (!!change.value?.comment_id || change.value?.item === 'comment');
       if (!isIgComment && !isFbComment) continue;
 
       const commentData = change.value;
@@ -88,7 +88,7 @@ async function processWebhook(body: any) {
       }
 
       // CRITICAL GUARD: Skip processing comments/replies created by the Business Page itself!
-      if (fromId === INSTAGRAM_BUSINESS_ID || fromUsername === 'silqueendesigns' || fromUsername.includes('silqueen')) {
+      if (fromId === INSTAGRAM_BUSINESS_ID || fromUsername === 'silqueendesigns' || (fromUsername.includes('silqueen') && fromUsername !== 'audooly')) {
         console.log(`Skipping self-comment webhook from business page (@${fromUsername} / ID: ${fromId})`);
         continue;
       }
@@ -146,7 +146,14 @@ async function processWebhook(body: any) {
           mediaShortcode = await getMediaShortcode(mediaId);
           flow = singleFlows.find(f => {
             const igMatch = typeof f._meta.postId === 'string' && (f._meta.postId.includes(mediaId) || (mediaShortcode && f._meta.postId.includes(mediaShortcode)));
-            const fbMatch = typeof f._meta.facebookUrl === 'string' && (f._meta.facebookUrl.includes(mediaId) || (mediaShortcode && f._meta.facebookUrl.includes(mediaShortcode)));
+            const fbUrl = typeof f._meta.facebookUrl === 'string' ? f._meta.facebookUrl : '';
+            const fbNumId = fbUrl.replace(/[^0-9]/g, '');
+            const fbMatch = fbUrl && (
+              fbUrl.includes(mediaId) ||
+              (commentData?.post_id && fbUrl.includes(commentData.post_id)) ||
+              (fbNumId && commentData?.post_id && commentData.post_id.includes(fbNumId)) ||
+              (fbNumId && commentId && commentId.includes(fbNumId))
+            );
             return igMatch || fbMatch;
           });
         }
