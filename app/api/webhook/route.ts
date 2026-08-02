@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendInstagramDM, sendDirectMessageToUser, replyToComment, getMediaShortcode, getInstagramUsername } from '@/lib/instagram';
+import { sendInstagramDM, sendDirectMessageToUser, replyToComment, getMediaShortcode, getInstagramUsername, sendFacebookMessengerDM, replyToFacebookComment } from '@/lib/instagram';
 import { supabase } from '@/lib/supabase';
 import { matchesKeywordInSentence, isAppreciationComment, DEFAULT_APPRECIATION_REPLIES } from '@/lib/matching';
 import { analyzeCommentWithAI } from '@/lib/ai';
@@ -227,7 +227,11 @@ async function processWebhook(body: any) {
       // Reply to comment
       if (flow.response_comment) {
         try {
-          await replyToComment(commentId, flow.response_comment);
+          if (isFbComment) {
+            await replyToFacebookComment(commentId, flow.response_comment);
+          } else {
+            await replyToComment(commentId, flow.response_comment);
+          }
           console.log('Comment reply sent ✅');
         } catch (err) {
           console.error('Failed to reply to comment:', err);
@@ -236,7 +240,7 @@ async function processWebhook(body: any) {
 
       // Send DM (with Follow Verification & Per-User Per-Post Rate Limit)
       if (flow.response_dm) {
-        const userHandle = commentData.from.username || fromUsername;
+        const userHandle = fromUsername || fromId;
         let alreadySentDM = false;
 
         try {
@@ -256,7 +260,11 @@ async function processWebhook(body: any) {
           console.log(`Per-user DM limit: User @${userHandle} already received DM for post ${mediaId}. Skipping 2nd DM.`);
         } else {
           try {
-            await sendInstagramDM(commentId, flow.response_dm, fromId);
+            if (isFbComment) {
+              await sendFacebookMessengerDM(fromId, flow.response_dm);
+            } else {
+              await sendInstagramDM(commentId, flow.response_dm, fromId);
+            }
             console.log('DM sent ✅');
 
             // Log DM delivered for this specific user + post combination

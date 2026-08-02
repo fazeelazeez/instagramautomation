@@ -203,3 +203,75 @@ export async function replyToComment(commentId: string, messageText: string) {
   console.log('Comment reply sent successfully ✅:', data);
   return data;
 }
+
+/**
+ * Sends a Direct Message to a Facebook Messenger User.
+ */
+export async function sendFacebookMessengerDM(recipientId: string, messageText: string) {
+  const token = await getAccessToken();
+  let textToSend = messageText;
+  if (messageText && (messageText.trim().startsWith('{') || messageText.trim().startsWith('['))) {
+    try {
+      const parsed = JSON.parse(messageText);
+      textToSend = parsed.text || '';
+    } catch (e) {}
+  }
+
+  const url = `https://graph.facebook.com/v25.0/me/messages`;
+  const payload = {
+    recipient: { id: recipientId },
+    message: { text: textToSend }
+  };
+
+  console.log('Sending Facebook Messenger DM to User ID:', recipientId);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    console.error('Facebook Messenger DM Error:', JSON.stringify(data));
+    throw new Error(`Facebook Messenger DM Error: ${JSON.stringify(data)}`);
+  }
+  console.log('Facebook Messenger DM sent successfully ✅:', data);
+  return data;
+}
+
+/**
+ * Sends a public reply to a Facebook Page comment via Facebook Graph API.
+ */
+export async function replyToFacebookComment(commentId: string, messageText: string) {
+  const token = await getAccessToken();
+  let replyText = messageText;
+
+  if (messageText && messageText.includes('|||')) {
+    const templates = messageText.split('|||').map(t => t.trim()).filter(Boolean);
+    if (templates.length > 0) {
+      replyText = templates[Math.floor(Math.random() * templates.length)];
+    }
+  }
+
+  const url = `https://graph.facebook.com/v25.0/${commentId}/comments`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ message: replyText })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    console.error('Facebook Comment Reply API Error:', JSON.stringify(data));
+    throw new Error(`Facebook Comment Reply Error: ${JSON.stringify(data)}`);
+  }
+  console.log('Facebook Comment reply sent successfully ✅:', data);
+  return data;
+}
