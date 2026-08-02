@@ -45,7 +45,8 @@ function parseFlowName(rawName: string) {
         flowGroupId: parsed.flowGroupId,
         name: parsed.name || 'Untitled Automation',
         scope: parsed.scope || 'all',
-        postId: parsed.postId || null
+        postId: parsed.postId || null,
+        facebookUrl: parsed.facebookUrl || null
       };
     }
   } catch (e) {}
@@ -53,7 +54,8 @@ function parseFlowName(rawName: string) {
     flowGroupId: rawName,
     name: rawName || 'Untitled Automation',
     scope: 'all',
-    postId: null
+    postId: null,
+    facebookUrl: null
   };
 }
 
@@ -94,6 +96,7 @@ function groupFlows(rawFlows: any[]) {
         name: meta.name,
         scope: meta.scope,
         postId: meta.postId,
+        facebookUrl: meta.facebookUrl,
         is_active: flow.is_active,
         commentTemplates: templates,
         dmText,
@@ -163,6 +166,7 @@ export default function FlowsPage() {
   const [wizardStep, setWizardStep] = useState(1);
   const [selectedScope, setSelectedScope] = useState<'all' | 'next' | 'single'>('all');
   const [instagramLink, setInstagramLink] = useState('');
+  const [facebookLink, setFacebookLink] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -292,9 +296,13 @@ export default function FlowsPage() {
   };
 
   const handleSaveFlow = async () => {
-    const resolvedFlowGroupId = editingGroupId || crypto.randomUUID();
-    const scopeLabel = selectedScope === 'all' ? 'All Posts' : selectedScope === 'next' ? 'Next Post' : 'Single Post';
-    const finalName = flowName.trim() || `${scopeLabel} - ${matchType === 'any' ? 'Any Comment' : keywordInput}`;
+    if (!flowName.trim()) {
+      alert('Please enter an automation name.');
+      return;
+    }
+
+    const resolvedFlowGroupId = editingGroupId || `group_${Date.now()}`;
+    const finalName = flowName.trim();
 
     let keywords: string[] = ['*'];
     if (matchType === 'specific' && keywordInput.trim()) {
@@ -306,7 +314,8 @@ export default function FlowsPage() {
       flowGroupId: resolvedFlowGroupId,
       name: finalName,
       scope: selectedScope,
-      postId: selectedScope === 'single' ? instagramLink.trim() : null
+      postId: selectedScope === 'single' ? instagramLink.trim() : null,
+      facebookUrl: selectedScope === 'single' ? facebookLink.trim() : null
     });
 
     const joinedComments = enableCommentReply ? commentTemplates.join('|||') : '';
@@ -788,18 +797,37 @@ export default function FlowsPage() {
                           exit={{ opacity: 0, y: -8 }}
                           className="space-y-2 pt-2"
                         >
-                          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Instagram Post Link</label>
-                          <div className="relative">
-                            <LinkIcon className="w-4 h-4 text-slate-400 absolute left-4 top-4" />
-                            <input
-                              type="text"
-                              placeholder="e.g. https://www.instagram.com/p/C-xyz..."
-                              className="w-full p-4 pl-11 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 text-slate-700 text-sm font-semibold"
-                              value={instagramLink}
-                              onChange={(e) => setInstagramLink(e.target.value)}
-                            />
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Instagram Post Link</label>
+                              <div className="relative">
+                                <LinkIcon className="w-4 h-4 text-slate-400 absolute left-4 top-4" />
+                                <input
+                                  type="text"
+                                  placeholder="e.g. https://www.instagram.com/p/C-xyz..."
+                                  className="w-full p-4 pl-11 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 text-slate-700 text-sm font-semibold"
+                                  value={instagramLink}
+                                  onChange={(e) => setInstagramLink(e.target.value)}
+                                />
+                              </div>
+                              <p className="text-[10px] font-medium text-slate-400 mt-1">Paste the URL of the specific Instagram post you want to automate.</p>
+                            </div>
+
+                            <div>
+                              <label className="text-xs font-bold text-blue-600 uppercase tracking-wider block mb-2">Facebook Post / Video Link (Optional)</label>
+                              <div className="relative">
+                                <LinkIcon className="w-4 h-4 text-blue-500 absolute left-4 top-4" />
+                                <input
+                                  type="text"
+                                  placeholder="e.g. https://www.facebook.com/silqueendesigns/videos/123..."
+                                  className="w-full p-4 pl-11 bg-blue-50/40 border border-blue-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-700 text-sm font-semibold"
+                                  value={facebookLink}
+                                  onChange={(e) => setFacebookLink(e.target.value)}
+                                />
+                              </div>
+                              <p className="text-[10px] font-medium text-slate-400 mt-1">Paste the URL of the cross-posted Facebook Video/Post to automate both platforms together.</p>
+                            </div>
                           </div>
-                          <p className="text-[10px] font-medium text-slate-400">Paste the URL of the specific Instagram post you want to automate.</p>
                         </motion.div>
                       )}
                     </AnimatePresence>

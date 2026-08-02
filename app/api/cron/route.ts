@@ -186,7 +186,7 @@ export async function GET(request: Request) {
         if (!matchedFlow && shortcode) {
           matchedFlow = parsedFlows.find((f: any) =>
             f._meta.scope === 'single' &&
-            (f._meta.postId?.includes(shortcode) || f._meta.postUrl?.includes(shortcode))
+            (f._meta.postId?.includes(shortcode) || f._meta.postUrl?.includes(shortcode) || f._meta.facebookUrl?.includes(shortcode))
           );
         }
 

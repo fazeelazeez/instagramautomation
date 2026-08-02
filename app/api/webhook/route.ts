@@ -138,15 +138,15 @@ async function processWebhook(body: any) {
           return { ...f, _meta: parsedMeta };
         });
 
-        // Priority 1: 'single' scope matching the exact mediaId
-        const singleFlows = parsedFlows.filter(f => f._meta.scope === 'single' && f._meta.postId);
+        // Priority 1: 'single' scope matching the exact mediaId or facebookUrl
+        const singleFlows = parsedFlows.filter(f => f._meta.scope === 'single' && (f._meta.postId || f._meta.facebookUrl));
         if (singleFlows.length > 0 && mediaId) {
           mediaShortcode = await getMediaShortcode(mediaId);
-          if (mediaShortcode) {
-            flow = singleFlows.find(f => {
-              return typeof f._meta.postId === 'string' && f._meta.postId.includes(mediaShortcode!);
-            });
-          }
+          flow = singleFlows.find(f => {
+            const igMatch = typeof f._meta.postId === 'string' && (f._meta.postId.includes(mediaId) || (mediaShortcode && f._meta.postId.includes(mediaShortcode)));
+            const fbMatch = typeof f._meta.facebookUrl === 'string' && (f._meta.facebookUrl.includes(mediaId) || (mediaShortcode && f._meta.facebookUrl.includes(mediaShortcode)));
+            return igMatch || fbMatch;
+          });
         }
 
         // Fallback to next post or all posts
@@ -332,7 +332,9 @@ async function processWebhook(body: any) {
         const matchedReelFlow = activeFlows.find((f: any) => {
           try {
             const parsed = JSON.parse(f.name);
-            if (shortcode && (parsed.postId?.includes(shortcode) || parsed.postUrl?.includes(shortcode))) {
+            const igMatch = shortcode && (parsed.postId?.includes(shortcode) || parsed.postUrl?.includes(shortcode));
+            const fbMatch = shortcode && parsed.facebookUrl?.includes(shortcode);
+            if (igMatch || fbMatch) {
               return true;
             }
           } catch (e) {}
