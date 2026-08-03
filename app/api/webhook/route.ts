@@ -245,17 +245,20 @@ async function processWebhook(body: any) {
         }
       }
 
-      // Send DM (with Follow Verification & Per-User Per-Post Rate Limit)
+      // Send DM (with 1-Hour Per-User Per-Product Deduplication Guard)
       if (flow.response_dm) {
         const userHandle = fromUsername || fromId;
+        const productKey = mediaShortcode || mediaId;
         let alreadySentDM = false;
 
         try {
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
           const { data: userPostLogs } = await supabase
             .from('automation_logs')
             .select('id')
-            .eq('sender_handle', userHandle)
-            .eq('instagram_post_id', `DM_${mediaId}`)
+            .or(`sender_handle.eq.${fromId},sender_handle.eq.${userHandle}`)
+            .ilike('instagram_post_id', `%${productKey}%`)
+            .gte('created_at', oneHourAgo)
             .limit(1);
 
           if (userPostLogs && userPostLogs.length > 0) {
@@ -264,7 +267,7 @@ async function processWebhook(body: any) {
         } catch (e) {}
 
         if (alreadySentDM) {
-          console.log(`Per-user DM limit: User @${userHandle} already received DM for post ${mediaId}. Skipping 2nd DM.`);
+          console.log(`Per-user DM limit: User @${userHandle} (${fromId}) already received DM for product ${productKey} within 1 hour. Skipping 2nd DM.`);
         } else {
           try {
             if (isFbComment) {
@@ -277,7 +280,7 @@ async function processWebhook(body: any) {
             // Log DM delivered for this specific user + post combination
             await supabase.from('automation_logs').insert([{
               flow_id: flow.id,
-              instagram_post_id: `DM_${mediaId}`,
+              instagram_post_id: `DM_${productKey}`,
               sender_handle: userHandle,
               action_taken: 'dm_sent_to_user',
               status: 'processed'
